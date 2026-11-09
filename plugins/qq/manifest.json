@@ -1,0 +1,345 @@
+{
+    "schemaVersion": 1,
+    "apiVersion": "1.0",
+    "id": "qq",
+    "version": "1.0.0",
+    "kind": "official",
+    "publisher": "local-p1",
+    "requiresHost": ">=1.0 <2.0",
+    "entry": {
+        "file": "plugin.cjs",
+        "sha256": "8cd38ffdec3861a8fe062acd7705a0785f0a2f710c5589d80b46c86cbd12b6b5",
+        "size": 3462151
+    },
+    "files": [
+        {
+            "path": "LICENSE",
+            "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
+            "size": 1063
+        },
+        {
+            "path": "THIRD-PARTY-NOTICES.md",
+            "sha256": "4a4fd0c07fd191098039ac85134d16644d05c09953cf1aede753a42d229a0564",
+            "size": 237
+        },
+        {
+            "path": "sbom.cdx.json",
+            "sha256": "f79303eaf5d154caf39fdc48f34d5180a5cae997fa6c382ef1640c25cfe2360d",
+            "size": 288
+        }
+    ],
+    "license": "MIT",
+    "attribution": "THIRD-PARTY-NOTICES.md",
+    "sbom": "sbom.cdx.json",
+    "runtime": {
+        "hosting": [
+            "module"
+        ],
+        "mobileBundled": true,
+        "sourceEntry": "index.mjs",
+        "bundled": true
+    },
+    "routes": {
+        "prefixes": [
+            "/qq"
+        ]
+    },
+    "credentials": {
+        "namespace": "qq",
+        "shape": "opaque",
+        "secretState": true,
+        "deviceState": false
+    },
+    "upstream": [],
+    "display": {
+        "name": "QQ 音乐",
+        "label": "QQ MUSIC",
+        "detail": "全类搜索 · 每日推荐 · 个人音乐 · 歌单编辑",
+        "sessionLabel": "QQ SESSION",
+        "archiveIdPrefix": "QQ MID / ",
+        "order": 2,
+        "default": false
+    },
+    "capabilities": {
+        "search": true,
+        "suggest": true,
+        "resolveLink": false,
+        "detail": true,
+        "playback": true,
+        "preview": true,
+        "lyrics": true,
+        "account": true,
+        "login": true,
+        "vip": true,
+        "discover": true,
+        "categories": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "likedAlbums": true,
+        "mv": false,
+        "officialPlayback": true,
+        "alternativeSource": false,
+        "mutations": {
+            "likeSong": true,
+            "subscribeAlbum": true,
+            "subscribePlaylist": true,
+            "updatePlaylistTracks": true
+        },
+        "playlistManagement": {
+            "createPlaylist": true,
+            "renamePlaylist": true,
+            "deletePlaylist": true
+        }
+    },
+    "library": {
+        "columns": [
+            "搜索结果",
+            "喜欢的歌曲",
+            "我的歌单",
+            "收藏歌单",
+            "收藏专辑"
+        ],
+        "sourceOrder": [
+            1,
+            2,
+            3,
+            4,
+            0
+        ],
+        "lanes": 5,
+        "identityProviders": [
+            "netease"
+        ],
+        "likedModel": "likedSongs",
+        "playlistNameMaxLength": 20,
+        "playlistEditableRule": "owned-with-dir-range",
+        "dirIdRange": [
+            1,
+            199
+        ]
+    },
+    "quality": {
+        "default": "exhigh",
+        "options": [
+            {
+                "id": "best",
+                "label": "自动最高可用",
+                "tier": "auto",
+                "featured": true
+            },
+            {
+                "id": "standard",
+                "label": "标准",
+                "tier": "standard"
+            },
+            {
+                "id": "exhigh",
+                "label": "HQ 高品质",
+                "tier": "hq"
+            },
+            {
+                "id": "lossless",
+                "label": "SQ 无损 / FLAC",
+                "tier": "lossless"
+            },
+            {
+                "id": "ape",
+                "label": "SQ 无损 / APE",
+                "tier": "lossless"
+            }
+        ],
+        "aliases": {
+            "best": "auto"
+        },
+        "descriptions": {
+            "best": {
+                "title": "自动最高可用",
+                "caption": "BEST AVAILABLE",
+                "detail": "由平台选择当前可用的最高音质",
+                "badge": ""
+            },
+            "standard": {
+                "title": "标准",
+                "caption": "STANDARD",
+                "detail": "日常聆听，兼顾音质与数据流量",
+                "badge": ""
+            },
+            "exhigh": {
+                "title": "极高",
+                "caption": "HIGH QUALITY",
+                "detail": "更充分保留有损编码中的声音细节",
+                "badge": "hq"
+            },
+            "lossless": {
+                "title": "无损",
+                "caption": "LOSSLESS / SQ",
+                "detail": "无损编码，保留更完整的录音细节",
+                "badge": "sq"
+            },
+            "ape": {
+                "title": "无损 / APE",
+                "caption": "LOSSLESS / APE",
+                "detail": "以 APE 格式提供无损音源",
+                "badge": "sq"
+            }
+        },
+        "featured": [
+            "best",
+            "lossless"
+        ],
+        "extras": [],
+        "labels": {
+            "standard": "标准",
+            "hq": "高品质 / HQ",
+            "sq": "无损 / SQ",
+            "hires": "高解析无损 / Hi-Res",
+            "jymaster": "超清母带",
+            "jyeffect": "高清臻音",
+            "sky": "沉浸环绕声"
+        }
+    },
+    "login": {
+        "required": false,
+        "methods": [
+            {
+                "id": "qr",
+                "type": "qr",
+                "label": "手机 QQ 扫码",
+                "channel": "qq"
+            },
+            {
+                "id": "wechat",
+                "type": "qr",
+                "label": "微信扫码",
+                "channel": "wechat"
+            }
+        ],
+        "pollIntervalMs": 1000,
+        "pollTimeoutMs": 300000,
+        "failureMessages": {
+            "auth.device-limit": "登录设备数量已达上限，请在 QQ 音乐设备管理中删除无用设备",
+            "auth.rate-limited": "QQ 登录操作过于频繁，请等待冷却后重试",
+            "qr-timeout": "二维码已过期，请重新生成",
+            "user-canceled": "已取消扫码登录"
+        }
+    },
+    "discover": {
+        "enabled": true,
+        "defaultTab": "playlists",
+        "tabs": [
+            {
+                "id": "playlists",
+                "label": "推荐歌单"
+            },
+            {
+                "id": "daily",
+                "label": "每日 30 首"
+            },
+            {
+                "id": "guess",
+                "label": "猜你喜欢"
+            },
+            {
+                "id": "new-songs",
+                "label": "新歌速递"
+            },
+            {
+                "id": "charts",
+                "label": "排行榜"
+            },
+            {
+                "id": "albums",
+                "label": "新专辑"
+            },
+            {
+                "id": "categories",
+                "label": "分类歌单"
+            },
+            {
+                "id": "history",
+                "label": "历史"
+            }
+        ]
+    },
+    "lyrics": {
+        "sources": [
+            "qq"
+        ],
+        "fallback": [],
+        "matchMode": "strict",
+        "rateLimitMs": 0,
+        "retryDelaysMs": []
+    },
+    "media": {
+        "hosts": [
+            "qqmusic.qq.com",
+            "*.qqmusic.qq.com"
+        ],
+        "alternativeHosts": [],
+        "coverHosts": [
+            "y.gtimg.cn",
+            "qpic.y.qq.com",
+            "y.qq.com"
+        ],
+        "allowHttp": false,
+        "schemePolicy": "https"
+    },
+    "links": {
+        "parse": false,
+        "patterns": [],
+        "officialAppUrl": "https://y.qq.com",
+        "officialLabel": "QQ 音乐",
+        "webTemplates": {
+            "song": "https://y.qq.com/n/ryqq/songDetail/{id}",
+            "album": "https://y.qq.com/n/ryqq/albumDetail/{id}",
+            "artist": "https://y.qq.com/n/ryqq/singer/{id}",
+            "playlist": "https://y.qq.com/n/ryqq/playlist/{id}",
+            "chart": "https://y.qq.com/n/ryqq/toplist/{id}"
+        }
+    },
+    "strings": {
+        "dailyTitle": "每日 30 首",
+        "officialEntry": "来源网页 ↗",
+        "loginHint": "可选登录；搜索与个人音乐需要登录",
+        "accountNote": "各平台账号独立保存",
+        "vipFree": "免费账号",
+        "vipGreen": "绿钻会员",
+        "vipSuper": "超级会员",
+        "vipUnknown": "会员状态未知",
+        "deviceNotice": "QQ 音乐账号只允许本人 7 天内在最多 5 台设备上登录，如登录失败，请在设备管理中删除无用设备。",
+        "scanHint": "请用手机 QQ 或微信扫描并确认登录"
+    },
+    "search": {
+        "enabled": true,
+        "maxQueryLength": 60,
+        "suggest": true,
+        "parseLinks": false,
+        "linkPatterns": []
+    },
+    "operations": {
+        "request": true,
+        "search": true,
+        "songs": true,
+        "detail": true,
+        "artistAlbums": true,
+        "wiki": true,
+        "account": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "likedAlbums": true,
+        "playback": true,
+        "preview": true,
+        "discover": true,
+        "categories": true,
+        "lyrics": true,
+        "mutate": true,
+        "subscriptionStatus": true,
+        "capabilities": true,
+        "vip": true,
+        "suggest": true,
+        "loginBegin": true,
+        "loginPoll": true,
+        "loginCancel": true,
+        "likedState": true
+    }
+}

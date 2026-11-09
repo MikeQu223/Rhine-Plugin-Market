@@ -1,0 +1,402 @@
+{
+    "schemaVersion": 1,
+    "apiVersion": "1.0",
+    "id": "netease",
+    "version": "1.0.0",
+    "kind": "official",
+    "publisher": "local-p1",
+    "requiresHost": ">=1.0 <2.0",
+    "entry": {
+        "file": "plugin.cjs",
+        "sha256": "83d644c6ee3bf0fad4fe9e5c6f3ce8db79281c47fbc7672b68fd7fbbdf0c03b0",
+        "size": 11051445
+    },
+    "files": [
+        {
+            "path": "LICENSE",
+            "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
+            "size": 1063
+        },
+        {
+            "path": "THIRD-PARTY-NOTICES.md",
+            "sha256": "41240b18a0320b555788b351e11006706503c08446b24e030ae5b88d511472e1",
+            "size": 223
+        },
+        {
+            "path": "sbom.cdx.json",
+            "sha256": "69417c3d57b2579e267c4a2732fe60ae5c03019bb8abb28456bc37b8bb9a2924",
+            "size": 293
+        }
+    ],
+    "license": "MIT",
+    "attribution": "THIRD-PARTY-NOTICES.md",
+    "sbom": "sbom.cdx.json",
+    "runtime": {
+        "hosting": [
+            "module"
+        ],
+        "mobileBundled": true,
+        "sourceEntry": "index.mjs",
+        "bundled": true
+    },
+    "routes": {
+        "legacyRoutes": [
+            "/mv/detail",
+            "/mv/url",
+            "/login/qr/key",
+            "/login/qr/check",
+            "/user/account",
+            "/search",
+            "/search/suggest",
+            "/song/detail",
+            "/album",
+            "/playlist/detail",
+            "/user/playlist",
+            "/likelist",
+            "/album/sublist",
+            "/artists",
+            "/artist/album",
+            "/playlist/delete",
+            "/like",
+            "/album/sub",
+            "/playlist/subscribe",
+            "/artist/sub",
+            "/artist/sublist",
+            "/playlist/create",
+            "/playlist/name/update",
+            "/playlist/tracks",
+            "/login/cellphone",
+            "/captcha/sent",
+            "/song/url",
+            "/song/url/v1",
+            "/personalized",
+            "/recommend/songs",
+            "/album/newest",
+            "/top/playlist",
+            "/playlist/catlist",
+            "/toplist",
+            "/song/wiki/summary",
+            "/lyric/new",
+            "/lyric"
+        ]
+    },
+    "credentials": {
+        "namespace": "netease",
+        "shape": "opaque",
+        "secretState": false,
+        "deviceState": false
+    },
+    "upstream": [],
+    "display": {
+        "name": "网易云音乐",
+        "label": "NETEASE",
+        "detail": "搜索 · 个人音乐 · 推荐 · 播放 · 歌单编辑",
+        "sessionLabel": "NETEASE SESSION",
+        "archiveIdPrefix": "NETEASE ID / ",
+        "order": 1,
+        "default": true
+    },
+    "capabilities": {
+        "search": true,
+        "suggest": true,
+        "resolveLink": true,
+        "detail": true,
+        "playback": true,
+        "preview": false,
+        "lyrics": true,
+        "account": true,
+        "login": true,
+        "vip": false,
+        "discover": true,
+        "categories": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "likedAlbums": true,
+        "mv": true,
+        "officialPlayback": true,
+        "alternativeSource": true,
+        "mutations": {
+            "likeSong": true,
+            "subscribeAlbum": true,
+            "subscribePlaylist": true,
+            "subscribeArtist": true,
+            "updatePlaylistTracks": true
+        },
+        "playlistManagement": {
+            "createPlaylist": true,
+            "renamePlaylist": true,
+            "deletePlaylist": true
+        }
+    },
+    "library": {
+        "columns": [
+            "搜索结果",
+            "喜欢的歌曲",
+            "我的歌单",
+            "收藏歌单",
+            "收藏专辑"
+        ],
+        "sourceOrder": [
+            1,
+            2,
+            3,
+            4,
+            0
+        ],
+        "lanes": 5,
+        "identityProviders": [
+            "qq"
+        ],
+        "likedModel": "likedIDs",
+        "playlistNameMaxLength": 100,
+        "playlistEditableRule": "all",
+        "dirIdRange": null
+    },
+    "quality": {
+        "default": "exhigh",
+        "options": [
+            {
+                "id": "standard",
+                "label": "标准",
+                "tier": "standard"
+            },
+            {
+                "id": "higher",
+                "label": "较高",
+                "tier": "hq"
+            },
+            {
+                "id": "exhigh",
+                "label": "极高",
+                "tier": "hq"
+            },
+            {
+                "id": "lossless",
+                "label": "SQ 无损",
+                "tier": "lossless"
+            },
+            {
+                "id": "hires",
+                "label": "Hi-Res 高解析音质",
+                "tier": "hires"
+            },
+            {
+                "id": "jymaster",
+                "label": "超清母带",
+                "tier": "master"
+            }
+        ],
+        "aliases": {},
+        "descriptions": {
+            "standard": {
+                "title": "标准",
+                "caption": "STANDARD",
+                "detail": "日常聆听，兼顾音质与数据流量",
+                "badge": ""
+            },
+            "higher": {
+                "title": "较高",
+                "caption": "HIGH QUALITY",
+                "detail": "提升声音细节，保持轻量传输",
+                "badge": "hq"
+            },
+            "exhigh": {
+                "title": "极高",
+                "caption": "HIGH QUALITY",
+                "detail": "更充分保留有损编码中的声音细节",
+                "badge": "hq"
+            },
+            "lossless": {
+                "title": "无损",
+                "caption": "LOSSLESS / SQ",
+                "detail": "无损编码，保留更完整的录音细节",
+                "badge": "sq"
+            },
+            "hires": {
+                "title": "高解析无损",
+                "caption": "HI-RES AUDIO",
+                "detail": "还原高解析录音中的丰富层次",
+                "badge": "hires"
+            },
+            "jymaster": {
+                "title": "超清母带",
+                "caption": "MASTER AUDIO",
+                "detail": "聆听母带版本中的细腻质感与动态",
+                "badge": "jymaster"
+            }
+        },
+        "featured": [
+            "jymaster",
+            "hires"
+        ],
+        "extras": [
+            {
+                "id": "jyeffect",
+                "label": "高清臻音"
+            },
+            {
+                "id": "sky",
+                "label": "沉浸环绕声"
+            }
+        ],
+        "labels": {
+            "standard": "标准",
+            "hq": "高品质 / HQ",
+            "sq": "无损 / SQ",
+            "hires": "高解析无损 / Hi-Res",
+            "jymaster": "超清母带",
+            "jyeffect": "高清臻音",
+            "sky": "沉浸环绕声"
+        }
+    },
+    "login": {
+        "required": false,
+        "methods": [
+            {
+                "id": "qr",
+                "type": "qr",
+                "label": "扫码登录"
+            },
+            {
+                "id": "phone",
+                "type": "sms",
+                "label": "手机号登录",
+                "phonePattern": "^1[0-9]{10}$",
+                "countryCode": "86"
+            }
+        ],
+        "pollIntervalMs": 1000,
+        "pollTimeoutMs": 300000,
+        "failureMessages": {}
+    },
+    "discover": {
+        "enabled": true,
+        "defaultTab": "playlists",
+        "tabs": [
+            {
+                "id": "playlists",
+                "label": "推荐歌单"
+            },
+            {
+                "id": "daily",
+                "label": "每日推荐"
+            },
+            {
+                "id": "charts",
+                "label": "排行榜"
+            },
+            {
+                "id": "albums",
+                "label": "新专辑"
+            },
+            {
+                "id": "categories",
+                "label": "分类歌单"
+            },
+            {
+                "id": "artists",
+                "label": "收藏歌手"
+            },
+            {
+                "id": "history",
+                "label": "历史"
+            }
+        ]
+    },
+    "lyrics": {
+        "sources": [
+            "netease"
+        ],
+        "fallback": [],
+        "matchMode": "strict",
+        "rateLimitMs": 0,
+        "retryDelaysMs": []
+    },
+    "media": {
+        "hosts": [
+            "music.126.net",
+            "*.music.126.net",
+            "music.163.com",
+            "*.music.163.com"
+        ],
+        "alternativeHosts": [
+            "qq.com",
+            "*.qq.com",
+            "gtimg.com",
+            "*.gtimg.com",
+            "kuwo.cn",
+            "*.kuwo.cn",
+            "kugou.com",
+            "*.kugou.com",
+            "migu.cn",
+            "*.migu.cn"
+        ],
+        "coverHosts": [
+            "music.126.net",
+            "*.music.126.net",
+            "music.163.com",
+            "*.music.163.com"
+        ],
+        "allowHttp": false,
+        "schemePolicy": "https"
+    },
+    "links": {
+        "parse": true,
+        "patterns": [
+            "music.163.com",
+            "y.music.163.com"
+        ],
+        "officialAppUrl": "https://music.163.com",
+        "officialLabel": "网易云音乐",
+        "webTemplates": {
+            "song": "https://music.163.com/#/song?id={id}",
+            "album": "https://music.163.com/#/album?id={id}",
+            "playlist": "https://music.163.com/#/playlist?id={id}",
+            "artist": "https://music.163.com/#/artist?id={id}"
+        }
+    },
+    "strings": {
+        "dailyTitle": "每日推荐",
+        "officialEntry": "官方客户端 ↗",
+        "loginHint": "可选登录，公开搜索不需要账号",
+        "accountNote": "各平台账号独立保存",
+        "scanHint": "请用网易云音乐 App 扫描并确认登录"
+    },
+    "search": {
+        "enabled": true,
+        "maxQueryLength": 100,
+        "suggest": true,
+        "parseLinks": true,
+        "linkPatterns": [
+            "music.163.com",
+            "y.music.163.com"
+        ]
+    },
+    "operations": {
+        "mv": true,
+        "mvVersions": true,
+        "request": true,
+        "search": true,
+        "songs": true,
+        "detail": true,
+        "artistAlbums": true,
+        "wiki": true,
+        "account": true,
+        "userPlaylists": true,
+        "likedIDs": true,
+        "likedAlbums": true,
+        "playback": true,
+        "lyrics": true,
+        "suggest": true,
+        "resolveLink": true,
+        "discover": true,
+        "categories": true,
+        "loginBegin": true,
+        "loginPoll": true,
+        "loginCancel": true,
+        "loginSms": true,
+        "loginSubmit": true,
+        "likedState": true,
+        "mutate": true
+    }
+}

@@ -1,0 +1,298 @@
+{
+    "schemaVersion": 1,
+    "apiVersion": "1.0",
+    "id": "kugou",
+    "version": "1.0.0",
+    "kind": "official",
+    "publisher": "local-p1",
+    "requiresHost": ">=1.0 <2.0",
+    "entry": {
+        "file": "plugin.cjs",
+        "sha256": "37599306c76570522e3fa66aac21e5db424f214a8a9fed0b2470fdf6d8858c20",
+        "size": 2289166
+    },
+    "files": [
+        {
+            "path": "LICENSE",
+            "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
+            "size": 1063
+        },
+        {
+            "path": "THIRD-PARTY-NOTICES.md",
+            "sha256": "489df60d259feded60c33fae8fdd792dced61992185cf684a4aaa31a69c48934",
+            "size": 324
+        },
+        {
+            "path": "sbom.cdx.json",
+            "sha256": "dc4dcd727fc5be7749d65e0aca1e9abb97203385a404a266e3a0f343203783f6",
+            "size": 291
+        }
+    ],
+    "license": "MIT",
+    "attribution": "THIRD-PARTY-NOTICES.md",
+    "sbom": "sbom.cdx.json",
+    "runtime": {
+        "hosting": [
+            "module"
+        ],
+        "mobileBundled": true,
+        "sourceEntry": "index.mjs",
+        "bundled": true
+    },
+    "routes": {
+        "prefixes": [
+            "/kugou"
+        ]
+    },
+    "credentials": {
+        "namespace": "kugou",
+        "shape": "opaque",
+        "secretState": true,
+        "deviceState": true,
+        "variants": [
+            "standard",
+            "lite"
+        ]
+    },
+    "upstream": [],
+    "display": {
+        "name": "酷狗音乐",
+        "label": "KUGOU",
+        "detail": "标准版 / 概念版 · 个人歌单 · 推荐与榜单 · 播放",
+        "sessionLabel": "KUGOU SESSION",
+        "archiveIdPrefix": "KUGOU ID / ",
+        "order": 3,
+        "default": false,
+        "nameByVariant": {
+            "standard": "酷狗音乐",
+            "lite": "酷狗概念版"
+        }
+    },
+    "capabilities": {
+        "search": true,
+        "suggest": false,
+        "resolveLink": false,
+        "detail": true,
+        "playback": true,
+        "preview": false,
+        "lyrics": true,
+        "account": true,
+        "login": true,
+        "vip": false,
+        "discover": true,
+        "categories": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "likedAlbums": false,
+        "mv": false,
+        "officialPlayback": true,
+        "alternativeSource": false,
+        "mutations": {},
+        "playlistManagement": {}
+    },
+    "library": {
+        "columns": [
+            "搜索结果",
+            "喜欢的歌曲",
+            "我的歌单",
+            "收藏歌单",
+            "收藏专辑"
+        ],
+        "visibleLanes": [
+            0,
+            1,
+            2,
+            3
+        ],
+        "sourceOrder": [
+            1,
+            2,
+            3,
+            0
+        ],
+        "lanes": 5,
+        "identityProviders": [],
+        "likedModel": "likedSongs",
+        "playlistNameMaxLength": 100,
+        "playlistEditableRule": "none",
+        "dirIdRange": null
+    },
+    "quality": {
+        "default": "exhigh",
+        "options": [
+            {
+                "id": "standard",
+                "label": "标准",
+                "tier": "standard"
+            },
+            {
+                "id": "exhigh",
+                "label": "HQ 高品音质",
+                "tier": "hq"
+            },
+            {
+                "id": "lossless",
+                "label": "SQ 无损音质",
+                "tier": "lossless"
+            },
+            {
+                "id": "hires",
+                "label": "Hi-Res 高解析音质",
+                "tier": "hires"
+            }
+        ],
+        "aliases": {},
+        "descriptions": {
+            "standard": {
+                "title": "标准",
+                "caption": "STANDARD",
+                "detail": "日常聆听，兼顾音质与数据流量",
+                "badge": ""
+            },
+            "exhigh": {
+                "title": "极高",
+                "caption": "HIGH QUALITY",
+                "detail": "更充分保留有损编码中的声音细节",
+                "badge": "hq"
+            },
+            "lossless": {
+                "title": "无损",
+                "caption": "LOSSLESS / SQ",
+                "detail": "无损编码，保留更完整的录音细节",
+                "badge": "sq"
+            },
+            "hires": {
+                "title": "高解析无损",
+                "caption": "HI-RES AUDIO",
+                "detail": "还原高解析录音中的丰富层次",
+                "badge": "hires"
+            }
+        },
+        "featured": [
+            "hires",
+            "lossless"
+        ],
+        "extras": [],
+        "labels": {
+            "standard": "标准",
+            "hq": "高品质 / HQ",
+            "sq": "无损 / SQ",
+            "hires": "高解析无损 / Hi-Res",
+            "jymaster": "超清母带",
+            "jyeffect": "高清臻音",
+            "sky": "沉浸环绕声"
+        },
+        "badgeBackground": true
+    },
+    "login": {
+        "required": true,
+        "methods": [
+            {
+                "id": "qr",
+                "type": "qr",
+                "label": "酷狗 App 扫码"
+            }
+        ],
+        "pollIntervalMs": 1000,
+        "pollTimeoutMs": 300000,
+        "failureMessages": {},
+        "variants": [
+            "standard",
+            "lite"
+        ]
+    },
+    "discover": {
+        "enabled": true,
+        "defaultTab": "playlists",
+        "tabs": [
+            {
+                "id": "playlists",
+                "label": "推荐歌单"
+            },
+            {
+                "id": "daily",
+                "label": "每日推荐"
+            },
+            {
+                "id": "charts",
+                "label": "排行榜"
+            },
+            {
+                "id": "albums",
+                "label": "新专辑"
+            },
+            {
+                "id": "categories",
+                "label": "分类歌单"
+            },
+            {
+                "id": "history",
+                "label": "历史"
+            }
+        ]
+    },
+    "lyrics": {
+        "sources": [
+            "kugou"
+        ],
+        "fallback": [],
+        "matchMode": "strict",
+        "rateLimitMs": 0,
+        "retryDelaysMs": []
+    },
+    "media": {
+        "hosts": [
+            "*.kugou.com",
+            "*.kugou.net"
+        ],
+        "alternativeHosts": [],
+        "coverHosts": [
+            "*.kugou.com",
+            "*.kgimg.com"
+        ],
+        "allowHttp": true,
+        "schemePolicy": "http-or-https"
+    },
+    "links": {
+        "parse": false,
+        "patterns": [],
+        "officialAppUrl": "https://www.kugou.com",
+        "officialLabel": "酷狗音乐",
+        "webTemplates": {
+            "home": "https://www.kugou.com"
+        }
+    },
+    "strings": {
+        "dailyTitle": "每日推荐",
+        "officialEntry": "官方网站 ↗",
+        "loginHint": "使用对应版本酷狗 App 扫码；搜索与个人音乐需要登录",
+        "accountNote": "各平台账号独立保存",
+        "scanHint": "请用对应版本酷狗 App 扫描并确认登录"
+    },
+    "search": {
+        "enabled": true,
+        "maxQueryLength": 100,
+        "suggest": false,
+        "parseLinks": false,
+        "linkPatterns": []
+    },
+    "operations": {
+        "request": true,
+        "search": true,
+        "songs": true,
+        "detail": true,
+        "artistAlbums": true,
+        "wiki": true,
+        "account": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "playback": true,
+        "trackPage": true,
+        "discover": true,
+        "categories": true,
+        "lyrics": true,
+        "loginBegin": true,
+        "loginPoll": true,
+        "loginCancel": true
+    }
+}
