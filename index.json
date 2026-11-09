@@ -13,10 +13,10 @@
                 "file": "plugin.cjs"
             },
             "files": [
+                "plugin.cjs",
                 "LICENSE",
                 "LyricsKit-LICENSE",
                 "THIRD-PARTY-NOTICES.md",
-                "plugin.cjs",
                 "sbom.cdx.json",
                 "modules/byfuns.js",
                 "modules/ddyr.js",
@@ -25,7 +25,12 @@
                 "modules/oi.js",
                 "modules/qijieya.js",
                 "modules/unm.js",
-                "data/china_ip_ranges.txt"
+                "data/china_ip_ranges.txt",
+                "xhr-sync-worker.js",
+                "upstream/LICENSE",
+                "upstream/auth.js",
+                "upstream/source.json",
+                "upstream/user.js"
             ]
         },
         {
@@ -40,10 +45,10 @@
                 "file": "plugin.cjs"
             },
             "files": [
+                "plugin.cjs",
                 "LICENSE",
                 "LyricsKit-LICENSE",
                 "THIRD-PARTY-NOTICES.md",
-                "plugin.cjs",
                 "sbom.cdx.json"
             ]
         },
@@ -59,10 +64,10 @@
                 "file": "plugin.cjs"
             },
             "files": [
+                "plugin.cjs",
                 "LICENSE",
                 "LyricsKit-LICENSE",
                 "THIRD-PARTY-NOTICES.md",
-                "plugin.cjs",
                 "sbom.cdx.json"
             ]
         }

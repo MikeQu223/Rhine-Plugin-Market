@@ -39,3 +39,13 @@ RHINE_PLUGIN_MARKETPLACE_URL="file:///Users/mikequ/Desktop/RhineMarket/index.jso
 ```
 
 或通过任意静态 HTTP 服务指向 `index.json`。
+
+## 客户端默认地址
+
+客户端默认读取：
+
+```text
+https://raw.githubusercontent.com/MikeQu223/Rhine-Plugin-Market/main/index.json
+```
+
+也可用 `RHINE_PLUGIN_MARKETPLACE_URL` 覆盖。

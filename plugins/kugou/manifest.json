@@ -8,14 +8,19 @@
     "requiresHost": ">=1.0 <2.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "37599306c76570522e3fa66aac21e5db424f214a8a9fed0b2470fdf6d8858c20",
-        "size": 2289166
+        "sha256": "0b19c954f122f22bfe086334a750299d7718cd6dd045df69b9b09bf903a929bc",
+        "size": 2293969
     },
     "files": [
         {
             "path": "LICENSE",
             "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
             "size": 1063
+        },
+        {
+            "path": "LyricsKit-LICENSE",
+            "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+            "size": 16725
         },
         {
             "path": "THIRD-PARTY-NOTICES.md",
@@ -70,7 +75,7 @@
     },
     "capabilities": {
         "search": true,
-        "suggest": false,
+        "suggest": true,
         "resolveLink": false,
         "detail": true,
         "playback": true,
@@ -185,7 +190,7 @@
         "badgeBackground": true
     },
     "login": {
-        "required": true,
+        "required": false,
         "methods": [
             {
                 "id": "qr",
@@ -265,20 +270,21 @@
     "strings": {
         "dailyTitle": "每日推荐",
         "officialEntry": "官方网站 ↗",
-        "loginHint": "使用对应版本酷狗 App 扫码；搜索与个人音乐需要登录",
+        "loginHint": "使用对应版本酷狗 App 扫码；搜索无需登录，个人音乐需要登录",
         "accountNote": "各平台账号独立保存",
         "scanHint": "请用对应版本酷狗 App 扫描并确认登录"
     },
     "search": {
         "enabled": true,
         "maxQueryLength": 100,
-        "suggest": false,
+        "suggest": true,
         "parseLinks": false,
         "linkPatterns": []
     },
     "operations": {
         "request": true,
         "search": true,
+        "suggest": true,
         "songs": true,
         "detail": true,
         "artistAlbums": true,

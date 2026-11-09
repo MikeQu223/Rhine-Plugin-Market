@@ -70203,11 +70203,15 @@ var require_kugou_transport = __commonJS({
           try {
             result = await api[endpoint.slice(1).replaceAll("/", "_")]({ ...params2, cookie });
           } catch (error) {
-            const code = Number(error.body?.error_code || 0);
+            const upstream = error?.body && typeof error.body === "object" ? error.body : {};
+            const code = Number(upstream.error_code || upstream.errcode || 0);
+            const authExpired = [20017, 20018, 51002].includes(code);
             const failure = new Error("\u9177\u72D7\u8BF7\u6C42\u5931\u8D25");
             failure.body = {
-              code: 502,
-              message: "\u9177\u72D7\u8BF7\u6C42\u5931\u8D25" + (code ? "\uFF08" + code + "\uFF09" : "\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5")
+              code: authExpired ? 401 : 502,
+              message: "\u9177\u72D7\u8BF7\u6C42\u5931\u8D25" + (code ? "\uFF08" + code + "\uFF09" : "\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5"),
+              ...code ? { upstreamCode: code } : {},
+              ...authExpired ? { authExpired: true } : {}
             };
             failure.kugouCredentials = cookie;
             throw failure;
@@ -70347,6 +70351,9 @@ function safeLoginDetails(body, includePrevious = true) {
   if (includePrevious && body?.primaryFailure) {
     result.primaryFailure = safeLoginDetails(body.primaryFailure, false);
   }
+  if (typeof body?.authExpired === "boolean") {
+    result.authExpired = body.authExpired;
+  }
   for (const name of ["retryable", "writeAttempted"]) {
     if (typeof body?.[name] === "boolean") {
       result[name] = body[name];
@@ -70430,15 +70437,30 @@ function playbackTier(track) {
 var identifier = (value) => /^[a-zA-Z0-9_-]{1,100}$/.test(String(value ?? "")) ? String(value) : "";
 var albumIdentifier = (...values) => values.map(identifier).find((value) => value && value !== "0") || "";
 var cover = (value) => String(value || "").replace("{size}", "480").replace(/^http:/, "https:");
+var dateText = (value) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return new Date(value > 1e12 ? value : value * 1e3).toISOString().slice(0, 10);
+  }
+  return "";
+};
+var splitNames = (value) => String(value || "").split(/[、,&，/]+/).map((name) => name.trim()).filter(Boolean);
 function kugouItem(raw, kind = "song") {
   const base = raw.base || {};
   const audio = raw.audio_info || {};
   const album = raw.album_info || raw.albuminfo || {};
   let id;
   let title;
+  let titleFromFilename = false;
   if (kind === "song") {
     id = identifier(raw.hash || raw.FileHash || audio.hash || audio.hash_128);
-    title = raw.songname || raw.audio_name || base.audio_name || raw.SongName || raw.filename || raw.name;
+    title = raw.songname || raw.audio_name || base.audio_name || raw.SongName || raw.filename || raw.FileName || raw.name;
+    titleFromFilename = !raw.songname && !raw.audio_name && !base.audio_name && !raw.SongName;
+    if ((!title || !raw.songname) && typeof title === "string") {
+      title = title.replace(/\.[a-z0-9]{2,5}$/i, "");
+    }
   } else if (kind === "album") {
     id = identifier(raw.albumid || raw.album_id || raw.AlbumID);
     title = raw.albumname || raw.album_name || raw.AlbumName;
@@ -70446,20 +70468,36 @@ function kugouItem(raw, kind = "song") {
     id = identifier(raw.author_id || raw.singerid || raw.AuthorId);
     title = raw.author_name || raw.singername || raw.AuthorName;
   } else {
-    id = identifier(raw.global_collection_id || raw.rankid || raw.listid);
-    title = raw.specialname || raw.rankname || raw.name;
+    id = identifier(raw.global_collection_id || raw.gid || raw.rankid || raw.specialid || raw.listid);
+    title = raw.specialname || raw.rankname || raw.listname || raw.list_name || raw.name;
+    if (typeof title === "string" && /\.[a-z0-9]{2,5}$/i.test(title)) {
+      title = title.replace(/\.[a-z0-9]{2,5}$/i, "");
+    }
   }
   if (!id || typeof title !== "string" || kind === "song" && !/^[a-fA-F0-9]{32}$/.test(id)) {
     return null;
   }
-  const artists = array(raw.authors || raw.singerinfo || raw.Authors).map((artist2) => {
+  const artists = array(raw.authors || raw.singerinfo || raw.Authors || raw.Singers).map((artist2) => {
     const author = artist2.base || artist2;
     return {
       id: identifier(author.author_id ?? author.id ?? author.AuthorId),
       name: String(author.author_name ?? author.name ?? author.AuthorName ?? "")
     };
   }).filter((artist2) => artist2.id && artist2.name);
-  const artist = artists.map((entry) => entry.name).join(" / ") || raw.author_name || base.author_name || raw.singername || raw.SingerName || "";
+  const artist = artists.map((entry) => entry.name).join(" / ") || raw.author_name || base.author_name || raw.singername || raw.SingerName || raw.AuthorName || raw.singer || raw.nickname || "";
+  if (kind === "song" && titleFromFilename && typeof title === "string") {
+    const separator = title.indexOf(" - ");
+    if (separator > 0) {
+      const prefix = title.slice(0, separator);
+      const rest = title.slice(separator + 3).trim();
+      const known = new Set(splitNames(artist).map((name) => name.toLowerCase()));
+      const parts = splitNames(prefix).map((name) => name.toLowerCase());
+      if (rest && parts.length && parts.every((name) => known.has(name))) {
+        title = rest;
+      }
+    }
+  }
+  const playCount = Number(raw.play_count || raw.playcount || raw.playCount || 0);
   return {
     provider: "kugou",
     kind,
@@ -70468,26 +70506,49 @@ function kugouItem(raw, kind = "song") {
     title,
     artist,
     artists,
-    albumID: albumIdentifier(raw.album_id, base.album_id, raw.AlbumID, album.id, raw.recommend_album_id),
+    albumID: albumIdentifier(
+      raw.album_id,
+      raw.albumid,
+      base.album_id,
+      raw.AlbumID,
+      album.id,
+      raw.recommend_album_id
+    ),
     albumAudioID: identifier(raw.album_audio_id || base.album_audio_id || raw.mixsongid || raw.MixSongID),
     album: album.album_name || album.name || raw.album_name || raw.albumname || raw.AlbumName || "",
     cover: cover(
-      raw.sizable_cover || raw.sizable_avatar || raw.cover || raw.imgurl || raw.img_cover || raw.Image || raw.info?.image || album.cover || album.sizable_cover || raw.trans_param?.union_cover
+      raw.sizable_cover || raw.sizable_avatar || raw.cover || raw.imgurl || raw.img_cover || raw.img || raw.Image || raw.AlbumImage || raw.Avatar || raw.avatar || raw.info?.image || album.cover || album.sizable_cover || raw.trans_param?.union_cover
     ),
     description: raw.intro || "",
-    date: raw.publishtime || raw.publish_date || "",
-    duration: Number(
-      raw.timelen || raw.timelength || audio.duration || audio.duration_128 || audio.timelength || raw.info?.duration || 0
+    date: dateText(
+      raw.publishtime || raw.publish_time || raw.publish_date || raw.publishTime || raw.PublishDate || raw.PublishTime
     ),
-    trackCount: Number(raw.count || raw.songcount || raw.song_count || 0),
-    creatorID: identifier(raw.list_create_userid || raw.create_userid || raw.suid),
-    owned: Number(raw.type) === 0,
-    listid: identifier(raw.listid),
-    listType: Number(raw.type || 0),
-    chart: !!raw.rankid,
-    rankCid: identifier(raw.rank_cid),
-    isDefault: Number(raw.is_def) === 1,
-    isFavorite: Number(raw.is_def) === 2,
+    duration: (() => {
+      const milliseconds = Number(
+        raw.timelen || raw.timelength || audio.duration || audio.duration_128 || audio.timelength || raw.info?.duration || 0
+      );
+      if (milliseconds > 0) {
+        return milliseconds;
+      }
+      const seconds = Number(raw.Duration || raw.time_length || 0);
+      return seconds > 0 ? Math.round(seconds * 1e3) : 0;
+    })(),
+    trackCount: Number(
+      raw.count || raw.songcount || raw.song_count || raw.AudioCount || raw.SongCount || 0
+    ),
+    creatorID: identifier(
+      raw.list_create_userid || raw.create_userid || raw.suid || (kind === "playlist" ? raw.userid || raw.user_id : void 0)
+    ),
+    ...playCount > 0 ? { playCount } : {},
+    ...kind === "playlist" ? {
+      owned: Number(raw.type) === 0,
+      listid: identifier(raw.listid),
+      listType: Number.isFinite(Number(raw.type || 0)) ? Number(raw.type || 0) : 0,
+      chart: !!raw.rankid,
+      rankCid: identifier(raw.rank_cid),
+      isDefault: Number(raw.is_def) === 1,
+      isFavorite: Number(raw.is_def) === 2
+    } : {},
     wiki: ""
   };
 }
@@ -70524,13 +70585,15 @@ var KugouAPI = class {
       more: count > 0 && (more === void 0 ? offset + count < Number(total) : !!more)
     };
   }
+  async suggest(text, valid = () => true) {
+    const body = await this.request("/search/suggest", { keywords: text }, [200], valid);
+    const groups = array(body.data);
+    return groups.flatMap((group) => array(group?.RecordDatas)).map((item) => String(item?.HintInfo || "").trim()).filter(Boolean).slice(0, 10);
+  }
   async search(text, kind, offset = 0, valid = () => true) {
     const types = { song: "song", album: "album", playlist: "special", artist: "author" };
     if (!types[kind]) {
       throw new Error("\u9177\u72D7\u4E0D\u652F\u6301\u6B64\u641C\u7D22\u7C7B\u522B");
-    }
-    if (!this.host.authenticated?.()) {
-      throw new Error("\u9177\u72D7\u641C\u7D22\u9700\u8981\u767B\u5F55\uFF0C\u8BF7\u5148\u7528\u9177\u72D7\u97F3\u4E50\u626B\u7801");
     }
     const body = await this.request(
       "/search",
@@ -70547,20 +70610,19 @@ var KugouAPI = class {
     return this.page(data.lists || data.info, kind, offset, data.total);
   }
   async songs(ids, valid = () => true) {
-    const result = [];
-    for (const id of ids) {
-      if (!valid()) {
-        throw new Error("Stale operation");
-      }
-      const cached = this.songCache.get(id);
-      if (cached) {
-        result.push(cached);
-        continue;
-      }
-      const body = await this.request("/privilege/lite", { hash: id }, [200], valid);
-      result.push(...this.rows(body.data));
+    if (!ids.length) {
+      return [];
     }
-    return result;
+    if (!valid()) {
+      throw new Error("Stale operation");
+    }
+    const body = await this.request(
+      "/privilege/lite",
+      { hash: ids.map((id) => String(id)).join(",") },
+      [200],
+      valid
+    );
+    return this.rows(body.data);
   }
   async trackPage(value, offset, valid) {
     const pagesize = value.kind === "album" ? 30 : 100;
@@ -70582,7 +70644,9 @@ var KugouAPI = class {
     const body = await this.request(route, params, [200], valid);
     const data = body.data || {};
     const raw = Array.isArray(data) ? data : data.songs || data.songlist || data.info;
-    return this.page(raw, "song", offset, data.total ?? data.count ?? body.total);
+    const total = data.total ?? data.count ?? data.list_count ?? body.total;
+    const more = total === void 0 ? array(raw).length >= pagesize : void 0;
+    return this.page(raw, "song", offset, total, more);
   }
   async detail(value, valid = () => true) {
     if (value.kind === "song") {
@@ -70593,11 +70657,31 @@ var KugouAPI = class {
         valid
       );
       const fetched = this.rows(body.data)[0];
-      const song = fetched ? {
-        ...value,
-        ...fetched,
-        artists: fetched.artists.length ? fetched.artists : value.artists || []
-      } : this.songCache.get(value.id);
+      const song = fetched ? (() => {
+        const merged = {
+          ...value,
+          ...fetched,
+          artists: fetched.artists.length ? fetched.artists : value.artists || []
+        };
+        for (const key of [
+          "albumID",
+          "albumAudioID",
+          "album",
+          "cover",
+          "date",
+          "duration",
+          "trackCount"
+        ]) {
+          const next = fetched[key];
+          if ((next === "" || next === 0 || next === void 0) && value[key] !== void 0) {
+            merged[key] = value[key];
+          }
+        }
+        if (value.title && typeof fetched.title === "string" && fetched.title.includes(" - ") && !value.title.includes(" - ")) {
+          merged.title = value.title;
+        }
+        return merged;
+      })() : this.songCache.get(value.id);
       if (!song) {
         throw new Error("\u9177\u72D7\u6B4C\u66F2\u8D44\u6599\u6682\u4E0D\u53EF\u8BFB\u53D6");
       }
@@ -70640,8 +70724,15 @@ var KugouAPI = class {
       valid
     );
     const data = body.data || {};
-    const raw = Array.isArray(data) ? data : data.info || data.albums;
-    return this.page(raw, "album", offset, data.total ?? body.total);
+    const raw = Array.isArray(data) ? data : array(data.info || data.albums);
+    const total = Number(data.total ?? data.list_count ?? body.total);
+    return this.page(
+      raw,
+      "album",
+      offset,
+      Number.isFinite(total) ? total : offset + raw.length,
+      Number.isFinite(total) ? offset + raw.length < total : raw.length >= 30
+    );
   }
   async wiki() {
     return "\u9177\u72D7\u97F3\u4E50 / \u6B4C\u66F2\u8D44\u6599";
@@ -70685,11 +70776,11 @@ var KugouAPI = class {
   }
   async likedSongs(offset = 0, valid = () => true) {
     if (!this.playlists.length) {
-      const [uid] = await this.account(valid);
+      const { uid } = await this.account(valid);
       await this.userPlaylists(uid, valid);
     }
     const favorite = this.playlists.find(
-      (entry) => entry.owned && (entry.isFavorite || entry.title.trim() === "\u6211\u559C\u6B22")
+      (entry) => entry.owned && (entry.isFavorite || entry.isDefault || ["\u6211\u559C\u6B22", "\u9ED8\u8BA4\u6536\u85CF"].includes(entry.title.trim()) || entry.title.includes("\u7EA2\u5FC3"))
     );
     if (!favorite) {
       throw new Error("\u9177\u72D7\u672A\u8FD4\u56DE\u201C\u6211\u559C\u6B22\u201D\u6B4C\u5355\uFF0C\u8BF7\u4ECE\u201C\u6211\u7684\u6B4C\u5355\u201D\u6D4F\u89C8");
@@ -70770,9 +70861,24 @@ var KugouAPI = class {
         bitDepth: Number(body.bitDepth || 0)
       } : null;
     };
-    let track = await read(level);
+    let track;
+    try {
+      track = await read(level);
+    } catch (error) {
+      if (error?.code === 401 || error?.authExpired) {
+        throw error;
+      }
+      track = null;
+    }
     if (!track && level !== "128") {
-      track = await read("128");
+      try {
+        track = await read("128");
+      } catch (error) {
+        if (error?.code === 401 || error?.authExpired) {
+          throw error;
+        }
+        track = null;
+      }
       if (track) {
         track.qualityFallback = "\u6807\u51C6";
       }
@@ -70783,7 +70889,14 @@ var KugouAPI = class {
     if (quality === "jymaster" && !track.qualityFallback) {
       track.qualityFallback = "\u65E0\u635F";
     }
-    return { ...track, tier: playbackTier(track) };
+    return {
+      ...track,
+      tier: playbackTier(track) || "auto",
+      format: track.extName || "",
+      bitrate: Number(track.br || 0),
+      br: Number(track.br || 0),
+      size: Number(track.size || 0)
+    };
   }
   async discover(tab, offset = 0, category = "\u5168\u90E8", valid = () => true) {
     const params = { page: Math.floor(offset / 30) + 1, pagesize: 30 };
@@ -70805,13 +70918,8 @@ var KugouAPI = class {
       return this.page(raw, "playlist", offset, raw.length, false);
     }
     if (tab === "albums") {
-      return this.page(
-        ["chn", "eur", "jpn", "kor"].flatMap((region) => array(data[region])),
-        "album",
-        offset,
-        0,
-        false
-      );
+      const raw = ["chn", "eur", "jpn", "kor"].flatMap((region) => array(data[region]));
+      return this.page(raw, "album", offset, offset + raw.length, raw.length >= 30);
     }
     if (tab === "daily") {
       return this.page(data.song_list, "song", offset, 0, false);
@@ -70820,10 +70928,11 @@ var KugouAPI = class {
   }
   async categories(valid = () => true) {
     const body = await this.request("/playlist/tags", {}, [200], valid);
-    return array(body.data).flatMap((group) => array(group.son)).map((entry) => ({
-      id: String(entry.tag_id),
-      name: entry.tag_name
-    }));
+    const values = array(body.data).flatMap((group) => [
+      ...group.tag_id && group.tag_name ? [{ id: String(group.tag_id), name: String(group.tag_name) }] : [],
+      ...array(group.son).filter((entry) => entry.tag_id && entry.tag_name).map((entry) => ({ id: String(entry.tag_id), name: String(entry.tag_name) }))
+    ]);
+    return [...new Map(values.map((entry) => [entry.id, entry])).values()];
   }
 };
 
@@ -70919,8 +71028,16 @@ function create(host, options = {}) {
   };
   const base = new BaseAPI(localHost, "kugou", "\u9177\u72D7\u97F3\u4E50");
   const api = new KugouAPI(base);
+  const operations = new Set(
+    Object.entries(manifest.operations || {}).filter(([, enabled]) => enabled).map(([operation]) => operation)
+  );
   return {
     async dispatchNative(operation, args) {
+      if (!operations.has(operation)) {
+        const error = new Error("\u6B64\u6765\u6E90\u4E0D\u652F\u6301\u8BE5\u63A5\u53E3");
+        error.code = 400;
+        throw error;
+      }
       if (operation === "lyrics") {
         return fetchLyrics(api, "kugou", args[0]);
       }

@@ -13949,12 +13949,12 @@ var require_cookies = __commonJS({
     };
     Cookies.prototype.set = function(name, value, opts) {
       var res = this.response, req = this.request, headers = res.getHeader("Set-Cookie") || [], cookie = new Cookie(name, value, opts), signed = opts && opts.signed !== void 0 ? opts.signed : !!this.keys;
-      var secure = this.secure === void 0 ? req.protocol === "https" || isRequestEncrypted(req) : Boolean(this.secure);
+      var secure2 = this.secure === void 0 ? req.protocol === "https" || isRequestEncrypted(req) : Boolean(this.secure);
       if (typeof headers == "string") headers = [headers];
-      if (!secure && opts && opts.secure) {
+      if (!secure2 && opts && opts.secure) {
         throw new Error("Cannot send secure cookie over unencrypted connection");
       }
-      cookie.secure = opts && opts.secure !== void 0 ? opts.secure : secure;
+      cookie.secure = opts && opts.secure !== void 0 ? opts.secure : secure2;
       if (opts && "secureProxy" in opts) {
         deprecate2('"secureProxy" option; use "secure" option, provide "secure" to constructor if needed');
         cookie.secure = opts.secureProxy;
@@ -60738,8 +60738,8 @@ var require_agent = __commonJS({
     function resume(socket) {
       socket.resume();
     }
-    function isDefaultPort(port, secure) {
-      return Boolean(!secure && port === 80 || secure && port === 443);
+    function isDefaultPort(port, secure2) {
+      return Boolean(!secure2 && port === 80 || secure2 && port === 443);
     }
     function isHTTPS(protocol) {
       return typeof protocol === "string" ? /^https:?$/i.test(protocol) : false;
@@ -64303,11 +64303,11 @@ var require_axios = __commonJS({
       return direct;
     }
     function setDirectAgent(options, configHttpAgent, configHttpsAgent) {
-      const secure = isHttps.test(options.protocol);
-      const agent = getDirectAgent(secure ? configHttpsAgent : configHttpAgent, secure ? https : http);
+      const secure2 = isHttps.test(options.protocol);
+      const agent = getDirectAgent(secure2 ? configHttpsAgent : configHttpAgent, secure2 ? https : http);
       options.agent = agent;
       if (options.agents) {
-        options.agents[secure ? "https" : "http"] = agent;
+        options.agents[secure2 ? "https" : "http"] = agent;
       }
     }
     function getTunnelingAgent(agentOptions, userHttpsAgent) {
@@ -65169,7 +65169,7 @@ var require_axios = __commonJS({
     var cookies = platform.hasStandardBrowserEnv ? (
       // Standard browser envs support document.cookie
       {
-        write(name, value, expires, path2, domain, secure, sameSite) {
+        write(name, value, expires, path2, domain, secure2, sameSite) {
           if (typeof document === "undefined") return;
           const cookie = [`${name}=${encodeURIComponent(value)}`];
           if (utils$1.isNumber(expires)) {
@@ -65181,7 +65181,7 @@ var require_axios = __commonJS({
           if (utils$1.isString(domain)) {
             cookie.push(`domain=${domain}`);
           }
-          if (secure === true) {
+          if (secure2 === true) {
             cookie.push("secure");
           }
           if (utils$1.isString(sameSite)) {
@@ -80398,6 +80398,7 @@ var require_qq_transport = __commonJS({
       "/search",
       "/search/suggest",
       "/getSongInfo",
+      "/song/batch",
       "/getSongListDetail",
       "/getAlbumInfo",
       "/getSingerHotsong",
@@ -80508,6 +80509,7 @@ var require_qq_transport = __commonJS({
     async function dispatch(message2) {
       const route = message2.route.slice(3);
       const write = writes.has(route);
+      const post = write || route === "/song/batch";
       if (!allowed.has(route) && !write) {
         throw new Error("Unsupported QQ route");
       }
@@ -80517,19 +80519,19 @@ var require_qq_transport = __commonJS({
       });
       const { port, secret } = await ready;
       const url = new URL(`http://127.0.0.1:${port}${route}`);
-      if (!write) {
+      if (!post) {
         for (const [key, value] of Object.entries(message2.params || {})) {
           url.searchParams.set(key, String(value));
         }
       }
       const response = await fetch(url, {
-        method: write ? "POST" : "GET",
+        method: post ? "POST" : "GET",
         headers: {
           "x-rhine-bridge": secret,
           "x-qq-session": message2.cookies?.qqmusic_session || "",
-          ...write ? { "content-type": "application/json" } : {}
+          ...post ? { "content-type": "application/json" } : {}
         },
-        ...write ? { body: JSON.stringify(message2.params || {}) } : {},
+        ...post ? { body: JSON.stringify(message2.params || {}) } : {},
         signal: AbortSignal.timeout(24e3),
         redirect: "error"
       }).catch((error) => {
@@ -80633,6 +80635,9 @@ function safeLoginDetails(body, includePrevious = true) {
   if (includePrevious && body?.primaryFailure) {
     result.primaryFailure = safeLoginDetails(body.primaryFailure, false);
   }
+  if (typeof body?.authExpired === "boolean") {
+    result.authExpired = body.authExpired;
+  }
   for (const name of ["retryable", "writeAttempted"]) {
     if (typeof body?.[name] === "boolean") {
       result[name] = body[name];
@@ -80725,6 +80730,16 @@ function unconfirmedWrite(message2) {
   return error;
 }
 var art = (mid) => mid ? "https://y.gtimg.cn/music/photo_new/T002R500x500M000" + encodeURIComponent(mid) + ".jpg" : "";
+var secure = (value) => String(value || "").replace(/^http:\/\//i, "https://");
+var dateText = (value) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return new Date(value > 1e12 ? value : value * 1e3).toISOString().slice(0, 10);
+  }
+  return "";
+};
 var itemIdentityKeys = [
   "mid",
   "songmid",
@@ -80788,18 +80803,25 @@ function qqItem(raw, kind = "song") {
     mediaId: identifier(d.file?.media_mid ?? d.media_mid ?? d.strMediaMid),
     songID: Number(d.id ?? d.songid ?? 0),
     songType: d.type ?? d.songtype ?? null,
-    cover: d.albumPicUrl || d.cover || d.picUrl || d.picurl || d.singerPic || d.pic || d.logo || art(kind === "album" ? id : albumID),
+    cover: secure(
+      d.albumPicUrl || d.cover || d.picUrl || d.picurl || d.singerPic || d.pic || d.logo || art(kind === "album" ? id : albumID)
+    ),
     creatorID: String(creator.uin ?? d.uin ?? ""),
     owned: !!d.owned,
     dirId: String(d.dirId ?? d.dirid ?? ""),
     description: d.desc ?? d.description ?? "",
     wiki: "",
-    date: d.time_public ?? d.publicTime ?? d.publishDate ?? d.publish_date ?? "",
+    date: dateText(
+      d.time_public ?? d.publicTime ?? d.publishDate ?? d.publish_date ?? d.pubtime ?? d.pub_time
+    ),
     duration: Number(d.interval ?? d.duration ?? 0) * 1e3,
     trackCount: Number(d.songNum ?? d.songnum ?? d.total_song_num ?? d.totalNum ?? d.total ?? 0),
     chart: d.chart === true,
     period: d.period ?? "",
-    ...Number.isSafeInteger(d.play_cnt) && d.play_cnt >= 0 ? { playCount: d.play_cnt } : {}
+    ...(() => {
+      const count = Number(d.play_cnt ?? d.listennum ?? d.listen_num);
+      return Number.isSafeInteger(count) && count >= 0 ? { playCount: count } : {};
+    })()
   };
 }
 var QQAPI = class {
@@ -80910,16 +80932,18 @@ var QQAPI = class {
     };
   }
   async songs(ids, valid = () => true, forPlayback = false) {
-    const result = [];
+    const cached = /* @__PURE__ */ new Map();
+    const pending = [];
     for (const id of ids) {
-      if (!valid()) {
-        throw new Error("Stale operation");
+      const hit = this.songCache.get(id);
+      if (hit && (!forPlayback || hit.playbackReady)) {
+        cached.set(id, hit);
+      } else {
+        pending.push(id);
       }
-      const cached = this.songCache.get(id);
-      if (cached && (!forPlayback || cached.playbackReady)) {
-        result.push(cached);
-        continue;
-      }
+    }
+    const fetched = /* @__PURE__ */ new Map();
+    const fetchOne = async (id) => {
       const r = this.response(
         await this.request(
           "/getSongInfo",
@@ -80935,10 +80959,48 @@ var QQAPI = class {
       if (song) {
         song.playbackReady = true;
         this.songCache.set(song.id, song);
-        result.push(song);
+        fetched.set(song.id, song);
+      }
+    };
+    for (let offset = 0; offset < pending.length; offset += 20) {
+      const chunk = pending.slice(offset, offset + 20);
+      if (!valid()) {
+        throw new Error("Stale operation");
+      }
+      let results = null;
+      try {
+        const body = this.response(
+          await this.request(
+            "/song/batch",
+            { songs: chunk.map((mid) => ({ mid })) },
+            [200],
+            valid
+          )
+        );
+        results = array(body.results);
+      } catch {
+        results = null;
+      }
+      if (results) {
+        for (const entry of results) {
+          if (entry?.code !== 200 || !entry.song) {
+            continue;
+          }
+          const song = qqItem(entry.song);
+          if (song) {
+            song.playbackReady = true;
+            this.songCache.set(song.id, song);
+            fetched.set(song.id, song);
+          }
+        }
+      }
+      for (const id of chunk) {
+        if (!fetched.has(id)) {
+          await fetchOne(id);
+        }
       }
     }
-    return result;
+    return ids.map((id) => cached.get(id) || fetched.get(id)).filter(Boolean);
   }
   async detail(value, valid = () => true) {
     if (value.kind === "song") {
@@ -81011,13 +81073,16 @@ var QQAPI = class {
         )
       );
       const d2 = r2.data || {};
+      const songs = array(d2.list || d2.songlist);
+      const count = Number(d2.total_song_num ?? d2.totalNum ?? songs.length);
       return [
         {
           ...value,
           description: d2.desc || value.description,
-          date: d2.aDate || value.date
+          date: d2.aDate || value.date,
+          trackCount: count > 0 ? count : value.trackCount || 0
         },
-        this.rows(d2.list || d2.songlist),
+        this.rows(songs),
         []
       ];
     }
@@ -81088,7 +81153,7 @@ var QQAPI = class {
       )
     );
     const d = this.module(r, "singer");
-    const raw = array(d.albumList);
+    const raw = array(d.albumList || d.list || d.data?.list);
     return {
       items: this.rows(raw, "album"),
       rawCount: raw.length,
@@ -81098,9 +81163,8 @@ var QQAPI = class {
   async wiki() {
     return "QQ \u97F3\u4E50 / \u6B4C\u66F2\u8D44\u6599";
   }
-  async capabilities(valid = () => true) {
-    const body = await this.request("/login/channels", {}, [200], valid);
-    return body.data?.features || {};
+  async capabilities() {
+    return this.host.manifest?.capabilities || {};
   }
   async vip(valid = () => true) {
     const body = await this.request("/user/vip", {}, [200], valid);
@@ -81108,8 +81172,18 @@ var QQAPI = class {
   }
   async likedState(ids, _uid, valid = () => true) {
     const result = {};
+    if (!ids.length) {
+      return result;
+    }
+    const body = await this.request(
+      "/user/subscription-status",
+      { type: "song", ids: ids.map((id) => String(id)).join(",") },
+      [200],
+      valid
+    );
+    const states = new Map(array(body.items).map((entry) => [String(entry.id), entry.status]));
     for (const id of ids) {
-      result[String(id)] = await this.subscriptionStatus("song", id, valid);
+      result[String(id)] = states.get(String(id)) || "unknown";
     }
     return result;
   }
@@ -81135,7 +81209,7 @@ var QQAPI = class {
         if (body2.liked !== enabled) {
           throw unconfirmedWrite("QQ \u7EA2\u5FC3\u5199\u5165\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
         }
-        return body2;
+        return { ...body2, applied: true };
       }
       const body = await request("/user/" + kind + "/subscribe", {
         [kind === "album" ? "id" : "tid"]: values.id,
@@ -81144,7 +81218,7 @@ var QQAPI = class {
       if (body.subscribed !== enabled) {
         throw unconfirmedWrite("QQ \u6536\u85CF\u5199\u5165\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
       }
-      return body;
+      return { ...body, applied: true };
     }
     if (route === "/playlist/create" || route === "/playlist/name/update") {
       const name = String(values.name || "").trim();
@@ -81161,12 +81235,17 @@ var QQAPI = class {
       }
       return {
         ...body,
+        applied: true,
         playlist: create2 ? {
           provider: "qq",
           kind: "playlist",
           id: String(body.tid),
           key: "qq:playlist:" + body.tid,
           title: body.name,
+          artist: "",
+          artists: [],
+          description: "",
+          cover: "",
           owned: true,
           dirId: String(body.dirId),
           trackCount: 0
@@ -81178,7 +81257,7 @@ var QQAPI = class {
       if (!body.deleted || !body.verified) {
         throw unconfirmedWrite("QQ \u5220\u9664\u7ED3\u679C\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
       }
-      return body;
+      return { ...body, applied: true };
     }
     if (route === "/playlist/tracks") {
       const song = await this.writableSong(values.tracks, valid);
@@ -81195,7 +81274,7 @@ var QQAPI = class {
       } else if (body.changed !== true) {
         throw unconfirmedWrite("QQ \u672A\u786E\u8BA4\u6B4C\u5355\u4FEE\u6539\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E");
       }
-      return body;
+      return { ...body, applied: true };
     }
     throw new Error("QQ \u6682\u4E0D\u652F\u6301\u6B64\u7F16\u8F91\u64CD\u4F5C");
   }
@@ -81225,7 +81304,6 @@ var QQAPI = class {
     const rows = [];
     const seenOffsets = /* @__PURE__ */ new Set();
     let favoriteOffset;
-    let total = 0;
     let incomplete = false;
     do {
       const body = await this.request(
@@ -81238,7 +81316,6 @@ var QQAPI = class {
         valid
       );
       rows.push(...array(body.playlist));
-      total = Math.max(total, Number(body.total || 0));
       incomplete = !!body.more;
       const next = body.nextFavoriteOffset;
       if (!body.more || !Number.isSafeInteger(next) || next <= (favoriteOffset ?? -1) || seenOffsets.has(next)) {
@@ -81263,7 +81340,7 @@ var QQAPI = class {
     }
     return {
       items,
-      total: Math.max(total, items.length),
+      total: items.length,
       rawCount: rows.length,
       more: false,
       incomplete
@@ -81334,15 +81411,21 @@ var QQAPI = class {
       [200],
       valid
     )).data?.playUrl?.[song.id];
+    const withMediaFields = (source) => ({
+      ...source,
+      url: secure(source.url),
+      tier: playbackTier(source) || "auto",
+      format: source.format || source.type || source.extName || "",
+      bitrate: Number(source.br || 0),
+      br: Number(source.br || 0),
+      size: Number(source.size || 0),
+      trial: preview || !!source.trial
+    });
     let track = await request(q);
     if (!track?.url && q !== "128" && q !== "best" && !preview) {
       track = await request("128");
       if (track?.url) {
-        return {
-          ...track,
-          qualityFallback: "\u6807\u51C6",
-          tier: playbackTier(track)
-        };
+        return withMediaFields({ ...track, qualityFallback: "\u6807\u51C6" });
       }
     }
     if (!track?.url) {
@@ -81358,7 +81441,7 @@ var QQAPI = class {
         hints[track?.restriction?.hint?.key] || (this.host.authenticated?.() ? "QQ \u5DF2\u767B\u5F55\uFF0C\u4F46\u5E73\u53F0\u672A\u8FD4\u56DE\u6807\u51C6\u97F3\u8D28\u97F3\u6E90\uFF1B\u8BF7\u786E\u8BA4\u8BE5\u6B4C\u66F2\u5728 QQ \u5B98\u65B9\u5BA2\u6237\u7AEF\u80FD\u5426\u64AD\u653E" : "QQ \u5F53\u524D\u672A\u767B\u5F55\uFF0C\u8BF7\u7528 QQ \u6216\u5FAE\u4FE1\u626B\u7801\u767B\u5F55\u540E\u91CD\u8BD5")
       );
     }
-    return { ...track, tier: playbackTier(track) };
+    return withMediaFields(track);
   }
   async discover(tab, offset = 0, category = "\u5168\u90E8", valid = () => true) {
     if (tab === "playlists" || tab === "categories") {
@@ -81404,7 +81487,7 @@ var QQAPI = class {
         more: false,
         ...tab === "new-songs" ? {
           areas: array(body.areas).map((area) => ({
-            id: area.id,
+            id: String(area.id),
             name: names[area.id] || area.name
           })),
           area: body.area
@@ -81428,10 +81511,30 @@ var QQAPI = class {
     }
     if (tab === "albums") {
       const body = this.response(
-        await this.request("/recommend/new-albums", { limit: 10 }, [200], valid)
+        await this.request(
+          "/recommend/new-albums",
+          {
+            offset,
+            limit: 20,
+            ...category && category !== "\u5168\u90E8" ? { area: category } : {}
+          },
+          [200],
+          valid
+        )
       );
       const raw = array(body.albums);
-      return { items: this.rows(raw, "album"), rawCount: raw.length, more: false };
+      return {
+        items: this.rows(raw, "album"),
+        rawCount: raw.length,
+        more: body.more === void 0 ? raw.length >= 20 : !!body.more,
+        ...body.areas === void 0 ? {} : {
+          areas: array(body.areas).map((area) => ({
+            id: String(area.id),
+            name: area.name
+          })),
+          area: body.area
+        }
+      };
     }
     throw new Error("QQ \u6682\u4E0D\u652F\u6301\u6B64\u7C7B\u522B");
   }
@@ -81449,7 +81552,7 @@ async function fetchLyrics(api, provider, track) {
     return api.lyrics(track);
   }
   if (provider === "qq") {
-    body = await api.request("/getLyric", { songmid: track.id, isFormat: false, ...metadata });
+    body = await api.request("/getLyric", { songmid: track.id, isFormat: false, trans: 1, ...metadata });
   } else if (provider === "kugou") {
     const search = await api.request("/search/lyric", {
       hash: track.id,
@@ -81533,8 +81636,16 @@ function create(host, options = {}) {
   };
   const base = new BaseAPI(localHost, "qq", "QQ \u97F3\u4E50");
   const api = new QQAPI(base);
+  const operations = new Set(
+    Object.entries(manifest.operations || {}).filter(([, enabled]) => enabled).map(([operation]) => operation)
+  );
   return {
     async dispatchNative(operation, args2) {
+      if (!operations.has(operation)) {
+        const error = new Error("\u6B64\u6765\u6E90\u4E0D\u652F\u6301\u8BE5\u63A5\u53E3");
+        error.code = 400;
+        throw error;
+      }
       if (operation === "lyrics") {
         return fetchLyrics(api, "qq", args2[0]);
       }

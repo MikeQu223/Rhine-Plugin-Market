@@ -8,14 +8,19 @@
     "requiresHost": ">=1.0 <2.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "8cd38ffdec3861a8fe062acd7705a0785f0a2f710c5589d80b46c86cbd12b6b5",
-        "size": 3462151
+        "sha256": "bbe3854eb5214d74397e4cfda9e5627e74108b7acf01b8a349dba9287d0850c5",
+        "size": 3465635
     },
     "files": [
         {
             "path": "LICENSE",
             "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
             "size": 1063
+        },
+        {
+            "path": "LyricsKit-LICENSE",
+            "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+            "size": 16725
         },
         {
             "path": "THIRD-PARTY-NOTICES.md",

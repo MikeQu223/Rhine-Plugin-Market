@@ -11483,8 +11483,8 @@ var require_agent = __commonJS({
     function resume(socket) {
       socket.resume();
     }
-    function isDefaultPort(port, secure) {
-      return Boolean(!secure && port === 80 || secure && port === 443);
+    function isDefaultPort(port, secure2) {
+      return Boolean(!secure2 && port === 80 || secure2 && port === 443);
     }
     function isHTTPS(protocol) {
       return typeof protocol === "string" ? /^https:?$/i.test(protocol) : false;
@@ -15048,11 +15048,11 @@ var require_axios = __commonJS({
       return direct;
     }
     function setDirectAgent(options, configHttpAgent, configHttpsAgent) {
-      const secure = isHttps.test(options.protocol);
-      const agent = getDirectAgent(secure ? configHttpsAgent : configHttpAgent, secure ? https : http);
+      const secure2 = isHttps.test(options.protocol);
+      const agent = getDirectAgent(secure2 ? configHttpsAgent : configHttpAgent, secure2 ? https : http);
       options.agent = agent;
       if (options.agents) {
-        options.agents[secure ? "https" : "http"] = agent;
+        options.agents[secure2 ? "https" : "http"] = agent;
       }
     }
     function getTunnelingAgent(agentOptions, userHttpsAgent) {
@@ -15914,7 +15914,7 @@ var require_axios = __commonJS({
     var cookies = platform.hasStandardBrowserEnv ? (
       // Standard browser envs support document.cookie
       {
-        write(name, value, expires, path2, domain, secure, sameSite) {
+        write(name, value, expires, path2, domain, secure2, sameSite) {
           if (typeof document === "undefined") return;
           const cookie = [`${name}=${encodeURIComponent(value)}`];
           if (utils$1.isNumber(expires)) {
@@ -15926,7 +15926,7 @@ var require_axios = __commonJS({
           if (utils$1.isString(domain)) {
             cookie.push(`domain=${domain}`);
           }
-          if (secure === true) {
+          if (secure2 === true) {
             cookie.push("secure");
           }
           if (utils$1.isString(sameSite)) {
@@ -74010,9 +74010,9 @@ var require_cookie = __commonJS({
         validators.validate(validators.isFunction(cb), cb);
         const host = canonicalDomain(context.hostname);
         const path = context.pathname || "/";
-        let secure = options.secure;
-        if (secure == null && context.protocol && (context.protocol == "https:" || context.protocol == "wss:")) {
-          secure = true;
+        let secure2 = options.secure;
+        if (secure2 == null && context.protocol && (context.protocol == "https:" || context.protocol == "wss:")) {
+          secure2 = true;
         }
         let sameSiteLevel = 0;
         if (options.sameSiteContext) {
@@ -74043,7 +74043,7 @@ var require_cookie = __commonJS({
           if (!allPaths && !pathMatch(path, c.path)) {
             return false;
           }
-          if (c.secure && !secure) {
+          if (c.secure && !secure2) {
             return false;
           }
           if (c.httpOnly && !http) {
@@ -237717,7 +237717,7 @@ var require_request3 = __commonJS({
       var index = header.indexOf(",");
       return index !== -1 ? header.substring(0, index).trim() : header.trim();
     });
-    defineGetter(req, "secure", function secure() {
+    defineGetter(req, "secure", function secure2() {
       return this.protocol === "https";
     });
     defineGetter(req, "ip", function ip() {
@@ -245741,12 +245741,10 @@ var require_netease_transport = __commonJS({
         if (!moduleName) {
           throw new Error("Unsupported metadata route");
         }
-        const query = Object.fromEntries(
-          Object.entries(config.params || {}).map(([key, value]) => [key, String(value)])
-        );
+        const query = { ...config.params || {} };
         query.cookie = Object.fromEntries(
           Object.entries(message.cookies || {}).filter(
-            ([key]) => !key.startsWith("__") && key !== "qqmusic_session"
+            ([key]) => !["__qqSessions", "__kugou"].includes(key) && key !== "qqmusic_session"
           )
         );
         const result2 = await diagnosticsContext2.run(
@@ -245763,10 +245761,13 @@ var require_netease_transport = __commonJS({
         "/login/qr/key": () => auth.loginQrCodeKey(),
         "/login/qr/check": () => auth.loginQrCodeCheck(params.key),
         "/user/account": () => user.userAccount(),
-        "/user/playlist": () => user.userPlaylist(params),
+        "/user/playlist": () => request({ url: "/user/playlist", params }),
         "/likelist": () => user.userLikedSongsIDs(params.uid),
-        "/album/sublist": () => user.likedAlbums(params)
+        "/album/sublist": () => request({ url: "/album/sublist", params })
       };
+      if ((message.route === "/song/url" || message.route === "/song/url/v1") && typeof params.unblock === "boolean") {
+        params.unblock = String(params.unblock);
+      }
       const body = await (calls[message.route] ? calls[message.route]() : request({ url: message.route, params }));
       return {
         body: ["/lyric", "/lyric/new"].includes(message.route) ? require_lyrics_format().normalizeLyrics("netease", body, message.params) : body,
@@ -245796,6 +245797,7 @@ function providerName(id) {
 }
 
 // MusicBridge/local-plugins/netease/items.mjs
+var secure = (value) => typeof value === "string" ? value.replace(/^http:\/\//i, "https://") : "";
 function item(kind, id, title = "\u6B63\u5728\u8BFB\u53D6\u2026", artist = "") {
   return {
     kind,
@@ -245838,7 +245840,7 @@ function parse(rawItem, kind) {
     creatorID: String(creator.userId ?? ""),
     albumID: String(album.id ?? ""),
     album: album.name ?? "",
-    cover: rawItem.picUrl ?? rawItem.coverImgUrl ?? album.picUrl ?? "",
+    cover: secure(rawItem.picUrl ?? rawItem.coverImgUrl ?? album.picUrl ?? ""),
     duration: rawItem.dt ?? rawItem.duration ?? 0,
     trackCount: rawItem.trackCount ?? rawItem.size ?? 0,
     description: rawItem.description ?? rawItem.briefDesc ?? ""
@@ -245884,6 +245886,9 @@ function safeLoginDetails(body, includePrevious = true) {
   }
   if (includePrevious && body?.primaryFailure) {
     result2.primaryFailure = safeLoginDetails(body.primaryFailure, false);
+  }
+  if (typeof body?.authExpired === "boolean") {
+    result2.authExpired = body.authExpired;
   }
   for (const name of ["retryable", "writeAttempted"]) {
     if (typeof body?.[name] === "boolean") {
@@ -246095,6 +246100,11 @@ var API = class {
           return;
         }
         if (body.code !== void 0 && !allow.includes(body.code)) {
+          this.host.acceptCookies(
+            JSON.stringify(response.cookies || []),
+            response._epoch,
+            response._credentialKey || ""
+          );
           const failure = new Error(
             providerName(this.provider) + "\u8FD4\u56DE " + body.code + "\uFF1A" + (body.message ?? body.msg ?? "\u8BF7\u7A0D\u540E\u91CD\u8BD5")
           );
@@ -246121,7 +246131,7 @@ var API = class {
       {
         id: value.id,
         level: quality,
-        unblock: alternative
+        unblock: alternative ? "true" : "false"
       },
       [200],
       valid
@@ -246130,13 +246140,22 @@ var API = class {
     if (!track?.url) {
       throw new Error("\u6B64\u6B4C\u66F2\u6682\u65E0\u53EF\u7528\u97F3\u6E90\uFF0C\u8BF7\u767B\u5F55\u6216\u5728\u7F51\u6613\u4E91\u6253\u5F00");
     }
+    const withMediaFields = (source) => ({
+      ...source,
+      url: String(source.url || "").replace(/^http:\/\//i, "https://"),
+      tier: playbackTier(source) || "auto",
+      format: source.type || source.extName || "",
+      bitrate: Number(source.br || 0),
+      br: Number(source.br || 0),
+      size: Number(source.size || 0)
+    });
     if (alternative && String(responseBody.msg || "").startsWith("Warning: Customizing unblock sources")) {
       const matchedTrack = { ...track };
       delete matchedTrack.level;
       delete matchedTrack.type;
-      return { ...matchedTrack, tier: playbackTier(matchedTrack) };
+      return withMediaFields(matchedTrack);
     }
-    return { ...track, tier: playbackTier(track) };
+    return withMediaFields(track);
   }
   async search(text, kind, offset = 0, valid = () => true) {
     const types = {
@@ -246173,8 +246192,24 @@ var API = class {
     };
     const raw = searchResult[selectSearchResultField()] || [];
     const total = searchResult[kind + "Count"] || 0;
+    const items = parsed(raw, kind);
+    if (kind === "song" && items.length) {
+      try {
+        const details = await this.songs(items.map((entry) => entry.id), valid);
+        const covers = new Map(details.map((entry) => [entry.id, entry]));
+        for (const entry of items) {
+          const detail = covers.get(entry.id);
+          if (detail) {
+            entry.cover = detail.cover || entry.cover;
+            entry.albumID = entry.albumID || detail.albumID;
+            entry.album = entry.album || detail.album;
+          }
+        }
+      } catch {
+      }
+    }
     return {
-      items: parsed(raw, kind),
+      items,
       total,
       rawCount: raw.length,
       more: offset + raw.length < total && raw.length > 0
@@ -246196,7 +246231,7 @@ var API = class {
     };
   }
   async loginPoll(token, valid = () => true) {
-    const body = await this.request("/login/qr/check", { key: token }, [200, 800, 801, 802, 803], valid);
+    const body = await this.request("/login/qr/check", { key: token, noCookie: true }, [200, 800, 801, 802, 803], valid);
     const code = Number(body.code ?? 800);
     let status = "waiting";
     if (code === 803) {
@@ -246238,12 +246273,13 @@ var API = class {
   /** 从分享链接解析实体；URL 形态留在插件内，core 只消费 kind/id。 */
   async resolveLink(input) {
     const text = String(input || "").replace(/\\/g, "").trim();
-    if (!/^https?:\/\//i.test(text)) {
+    const match = text.match(/https?:\/\/[^\s<>"'）)】]+/i);
+    if (!match) {
       return null;
     }
     let url;
     try {
-      url = new URL(text);
+      url = new URL(match[0].replace(/[),.;，。；:：\]】]+$/, ""));
     } catch {
       return null;
     }
@@ -246254,10 +246290,10 @@ var API = class {
     const page = fragment ? new URL("https://music.163.com" + (fragment.startsWith("/") ? fragment : "/" + fragment)) : url;
     const kind = page.pathname.split("/").filter(Boolean).at(-1);
     const id = page.searchParams.get("id") || "";
-    if (!["song", "album", "playlist"].includes(kind) || !/^[0-9]{1,20}$/.test(id)) {
+    if (!["song", "album", "playlist", "artist"].includes(kind) || !/^[0-9]{1,20}$/.test(id)) {
       return null;
     }
-    return { kind, id };
+    return { provider: "netease", kind, id };
   }
   async categories(valid = () => true) {
     const body = await this.request("/playlist/catlist", {}, [200], valid);
@@ -246470,7 +246506,21 @@ var API = class {
     if (!allowed.has(route)) {
       throw new Error("\u4E0D\u652F\u6301\u7684\u5199\u64CD\u4F5C");
     }
-    return this.request(route, values, [200], valid);
+    const payload = route === "/like" ? { ...values, like: values.like === true || values.like === "true" ? "true" : "false" } : values;
+    const body = await this.request(route, payload, [200], valid);
+    return { ...body, applied: true };
+  }
+  async likedSongs(offset = 0, valid = () => true) {
+    const me = await this.account(valid);
+    const ids = await this.likedIDs(me.uid, valid);
+    const page = ids.slice(offset, offset + 100);
+    const items = await this.songs(page, valid);
+    return {
+      items,
+      rawCount: items.length,
+      total: ids.length,
+      more: offset + items.length < ids.length
+    };
   }
   async likedIDs(uid, valid = () => true) {
     const response = await this.request(
@@ -246499,18 +246549,20 @@ var API = class {
     const responseBody = await this.request(
       "/album/sublist",
       {
-        limit: 2e3,
+        limit: 100,
+        offset,
         timestamp: Date.now()
       },
       [200],
       valid
     );
     const raw = responseBody.data || [];
+    const total = Number(responseBody.count ?? offset + raw.length);
     return {
       items: parsed(raw, "album"),
-      total: responseBody.count ?? offset + raw.length,
+      total,
       rawCount: raw.length,
-      more: false
+      more: responseBody.hasMore === void 0 ? offset + raw.length < total && raw.length > 0 : !!responseBody.hasMore
     };
   }
 };
@@ -246633,8 +246685,16 @@ function create(host, options = {}) {
     }
   };
   const api = new API(localHost);
+  const operations = new Set(
+    Object.entries(manifest.operations || {}).filter(([, enabled]) => enabled).map(([operation]) => operation)
+  );
   return {
     async dispatchNative(operation, args) {
+      if (!operations.has(operation)) {
+        const error = new Error("\u6B64\u6765\u6E90\u4E0D\u652F\u6301\u8BE5\u63A5\u53E3");
+        error.code = 400;
+        throw error;
+      }
       if (operation === "lyrics") {
         return fetchLyrics(api, "netease", args[0]);
       }

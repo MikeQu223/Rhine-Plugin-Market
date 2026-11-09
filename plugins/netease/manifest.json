@@ -8,14 +8,19 @@
     "requiresHost": ">=1.0 <2.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "83d644c6ee3bf0fad4fe9e5c6f3ce8db79281c47fbc7672b68fd7fbbdf0c03b0",
-        "size": 11051445
+        "sha256": "f8d89ee83c4166c6ae74f4ced0ab00922e8779fa5d507fc6ef795ee7c1a9b372",
+        "size": 11054038
     },
     "files": [
         {
             "path": "LICENSE",
             "sha256": "b42f104f4b3687773c76efbf990c1ab7b306a8c59035958c0b886dfbbcf2cd91",
             "size": 1063
+        },
+        {
+            "path": "LyricsKit-LICENSE",
+            "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+            "size": 16725
         },
         {
             "path": "THIRD-PARTY-NOTICES.md",
@@ -26,6 +31,71 @@
             "path": "sbom.cdx.json",
             "sha256": "69417c3d57b2579e267c4a2732fe60ae5c03019bb8abb28456bc37b8bb9a2924",
             "size": 293
+        },
+        {
+            "path": "modules/byfuns.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/ddyr.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/gdmusic.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/msls.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/oi.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/qijieya.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "modules/unm.js",
+            "sha256": "3490a682f3d1b425b0d66d09950610fd45f4386389eb8e032bf9bb04521b4ec0",
+            "size": 57
+        },
+        {
+            "path": "data/china_ip_ranges.txt",
+            "sha256": "a4f6c8bd2faaddebd318d22c9e04ba118394b8a49bcec44002fa3501c11788b6",
+            "size": 64582
+        },
+        {
+            "path": "xhr-sync-worker.js",
+            "sha256": "7b4a20679253a579350356a399333137a0b5de6dbe0c982548688f3b3a5bff5a",
+            "size": 6394674
+        },
+        {
+            "path": "upstream/LICENSE",
+            "sha256": "c33378c6fd12e6d040cedd06dc0d1bedfca74fd66bc46cc2cf10cc10e0906be6",
+            "size": 1069
+        },
+        {
+            "path": "upstream/auth.js",
+            "sha256": "b598012b381a21c2f3d4e71892192c520168f7d117da9bf6bf4756a4715893f9",
+            "size": 2580
+        },
+        {
+            "path": "upstream/source.json",
+            "sha256": "98b2463192254baaec11b210e8a9f854d149d213dea56761315694f9b60923e4",
+            "size": 1286
+        },
+        {
+            "path": "upstream/user.js",
+            "sha256": "f122789b3a8529b7b72de308e74612b488bcbf5f2202fb3def69e83b3fe0b278",
+            "size": 5030
         }
     ],
     "license": "MIT",
@@ -384,6 +454,7 @@
         "account": true,
         "userPlaylists": true,
         "likedIDs": true,
+        "likedSongs": true,
         "likedAlbums": true,
         "playback": true,
         "lyrics": true,
