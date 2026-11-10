@@ -1,6 +1,8 @@
 # Rhine Plugin Market
 
-插件市场仓库。客户端读取根目录 `index.json`，按 `path` 下载插件文件。
+[Rhine-Music-Database](https://github.com/MikeQu223/Rhine-Music-Database) 的插件市场仓库。
+
+客户端读取根目录 `index.json`，按 `path` 下载插件文件。
 
 ## 目录
 
@@ -67,3 +69,9 @@ https://raw.githubusercontent.com/MikeQu223/Rhine-Plugin-Market/main/index.json
 ```
 
 也可用 `RHINE_PLUGIN_MARKETPLACE_URL` 覆盖。
+
+## 参考项目
+
+- **[NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)**: 网易云接入
+- **[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)**: 酷狗音乐标准版及概念版接入
+- **[yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api)**: QQ 音乐接入
