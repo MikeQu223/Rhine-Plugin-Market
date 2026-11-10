@@ -31,7 +31,6 @@ plugins/<id>/...
 
 ```json
 {
-    "schemaVersion": 1,
     "id": "example",
     "name": "显示名称",
     "description": "一句话描述",
