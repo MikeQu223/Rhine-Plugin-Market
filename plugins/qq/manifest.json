@@ -1,15 +1,15 @@
 {
-    "schemaVersion": 1,
-    "apiVersion": "1.0",
+    "schemaVersion": 2,
+    "apiVersion": "2.0",
     "id": "qq",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "kind": "official",
     "publisher": "local-p1",
-    "requiresHost": ">=1.0 <2.0",
+    "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "bbe3854eb5214d74397e4cfda9e5627e74108b7acf01b8a349dba9287d0850c5",
-        "size": 3465635
+        "sha256": "f970865b38d719dd90bcf590e9b0d9125692d715975554567f0ed43cc8e4fb53",
+        "size": 3466313
     },
     "files": [
         {
@@ -31,6 +31,16 @@
             "path": "sbom.cdx.json",
             "sha256": "f79303eaf5d154caf39fdc48f34d5180a5cae997fa6c382ef1640c25cfe2360d",
             "size": 288
+        },
+        {
+            "path": "assets/quality/sq.png",
+            "sha256": "72a04f8800b3e7016ef5d82a09f2bd3670a7f4c9d53c7c7ed7df1c8363884b81",
+            "size": 1974
+        },
+        {
+            "path": "assets/quality/hq.png",
+            "sha256": "1e31efd512ccf26079e9548284e521741c08fcdc42093924b60c798631f5b0a0",
+            "size": 1483
         }
     ],
     "license": "MIT",
@@ -42,7 +52,11 @@
         ],
         "mobileBundled": true,
         "sourceEntry": "index.mjs",
-        "bundled": true
+        "bundled": true,
+        "diagnosticsOrdinal": 2,
+        "env": {
+            "RHINE_QQ_DEVICE_STATE_PATH": "$dataDir/qq-device.json"
+        }
     },
     "routes": {
         "prefixes": [
@@ -53,7 +67,34 @@
         "namespace": "qq",
         "shape": "opaque",
         "secretState": true,
-        "deviceState": false
+        "deviceState": false,
+        "inject": {
+            "__qqSessions": {
+                "secret": "sessions",
+                "object": false
+            }
+        },
+        "responseSecrets": {
+            "qqSessions": "sessions"
+        },
+        "auth": {
+            "anyOf": [
+                {
+                    "cookie": "qqmusic_session"
+                }
+            ],
+            "expiredCodes": [
+                401
+            ]
+        },
+        "legacy": {
+            "cookies": {
+                "qqmusic_session": "qqmusic_session"
+            },
+            "secrets": {
+                "__qqSessions": "sessions"
+            }
+        }
     },
     "upstream": [],
     "display": {
@@ -201,6 +242,10 @@
             "jymaster": "超清母带",
             "jyeffect": "高清臻音",
             "sky": "沉浸环绕声"
+        },
+        "badges": {
+            "sq": "assets/quality/sq.png",
+            "hq": "assets/quality/hq.png"
         }
     },
     "login": {
@@ -346,5 +391,53 @@
         "loginPoll": true,
         "loginCancel": true,
         "likedState": true
+    },
+    "cache": {
+        "version": "2.0.0-1",
+        "ttlByOperation": {
+            "songs": 86400,
+            "wiki": 86400,
+            "detail": 21600,
+            "artistAlbums": 21600,
+            "userPlaylists": 60,
+            "likedSongs": 60,
+            "likedAlbums": 60,
+            "account": 1800,
+            "discover": 900,
+            "categories": 900,
+            "search": 900,
+            "suggest": 900,
+            "vip": 1800
+        },
+        "diskOperations": [
+            "songs",
+            "wiki",
+            "detail",
+            "artistAlbums",
+            "discover",
+            "categories",
+            "search"
+        ],
+        "disk": "guest",
+        "maxEntries": 256,
+        "invalidateOn": [
+            "login",
+            "logout",
+            "mutation",
+            "variant"
+        ],
+        "ttlByRoute": {
+            "/qq/search": 900,
+            "/qq/getSongInfo": 21600,
+            "/qq/getMusicPlay": 0,
+            "/qq/getLyric": 0,
+            "/qq/user/detail": 1800,
+            "/qq/user/playlist": 60,
+            "/qq/user/albums": 60,
+            "/qq/user/liked-songs": 60,
+            "/qq/user/daily-songs": 60,
+            "/qq/recommend": 900,
+            "/qq/login": 0
+        }
     }
 }

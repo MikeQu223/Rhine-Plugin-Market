@@ -80458,10 +80458,14 @@ var require_qq_transport = __commonJS({
       }
       return result;
     }
+    var pluginEnv = {};
+    function configure(env) {
+      pluginEnv = { ...pluginEnv, ...env || {} };
+    }
     async function start(cookies) {
       const previous = process.env.NODE_ENV;
       process.env.NODE_ENV = "test";
-      process.env.QQ_AUTH_STATE_PATH = process.env.RHINE_QQ_DEVICE_STATE_PATH || "memory";
+      process.env.QQ_AUTH_STATE_PATH = pluginEnv.RHINE_QQ_DEVICE_STATE_PATH ?? process.env.RHINE_QQ_DEVICE_STATE_PATH ?? "memory";
       process.env.QQ_ENABLE_UPDATE_CHECK = "false";
       const deviceContext = require_deviceContext();
       const repository = deviceContext.createDefaultDeviceContextRepository();
@@ -80589,6 +80593,7 @@ var require_qq_transport = __commonJS({
       globalThis.__rhinePluginTestSetup?.({ axios: require_axios() });
     }
     module2.exports = {
+      configure,
       async dispatch(message2) {
         try {
           return await dispatch(message2);
@@ -80711,7 +80716,7 @@ function playbackTier(track) {
   }
   const file = url.split("/").pop().toUpperCase();
   if (file.startsWith("F000") || file.startsWith("A000")) {
-    return "sq";
+    return "lossless";
   }
   if (file.startsWith("M800")) {
     return "hq";
@@ -80721,6 +80726,13 @@ function playbackTier(track) {
   }
   return "";
 }
+var providerTierFor = (tier) => ({
+  standard: "standard",
+  hq: "exhigh",
+  lossless: "lossless",
+  hires: "lossless",
+  master: "lossless"
+})[tier] || "";
 var identifier = (value) => /^[a-zA-Z0-9_-]{1,80}$/.test(String(value ?? "")) ? String(value) : "";
 function unconfirmedWrite(message2) {
   const error = new Error(message2);
@@ -81209,7 +81221,11 @@ var QQAPI = class {
         if (body2.liked !== enabled) {
           throw unconfirmedWrite("QQ \u7EA2\u5FC3\u5199\u5165\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
         }
-        return { ...body2, applied: true };
+        return {
+          ...body2,
+          applied: true,
+          state: enabled ? "subscribed" : "not-subscribed"
+        };
       }
       const body = await request("/user/" + kind + "/subscribe", {
         [kind === "album" ? "id" : "tid"]: values.id,
@@ -81218,7 +81234,11 @@ var QQAPI = class {
       if (body.subscribed !== enabled) {
         throw unconfirmedWrite("QQ \u6536\u85CF\u5199\u5165\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
       }
-      return { ...body, applied: true };
+      return {
+        ...body,
+        applied: true,
+        state: enabled ? "subscribed" : "not-subscribed"
+      };
     }
     if (route === "/playlist/create" || route === "/playlist/name/update") {
       const name = String(values.name || "").trim();
@@ -81233,23 +81253,26 @@ var QQAPI = class {
       if (!body.verified) {
         throw unconfirmedWrite("QQ \u6B4C\u5355\u5199\u5165\u672A\u786E\u8BA4\uFF0C\u8BF7\u5237\u65B0\u6838\u5B9E\uFF0C\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4");
       }
+      const item = create2 ? {
+        provider: "qq",
+        kind: "playlist",
+        id: String(body.tid),
+        key: "qq:playlist:" + body.tid,
+        title: body.name,
+        artist: "",
+        artists: [],
+        description: "",
+        cover: "",
+        owned: true,
+        dirId: String(body.dirId),
+        trackCount: 0
+      } : void 0;
       return {
         ...body,
         applied: true,
-        playlist: create2 ? {
-          provider: "qq",
-          kind: "playlist",
-          id: String(body.tid),
-          key: "qq:playlist:" + body.tid,
-          title: body.name,
-          artist: "",
-          artists: [],
-          description: "",
-          cover: "",
-          owned: true,
-          dirId: String(body.dirId),
-          trackCount: 0
-        } : void 0
+        name,
+        item,
+        playlist: item
       };
     }
     if (route === "/playlist/delete") {
@@ -81411,16 +81434,20 @@ var QQAPI = class {
       [200],
       valid
     )).data?.playUrl?.[song.id];
-    const withMediaFields = (source) => ({
-      ...source,
-      url: secure(source.url),
-      tier: playbackTier(source) || "auto",
-      format: source.format || source.type || source.extName || "",
-      bitrate: Number(source.br || 0),
-      br: Number(source.br || 0),
-      size: Number(source.size || 0),
-      trial: preview || !!source.trial
-    });
+    const withMediaFields = (source) => {
+      const tier = playbackTier(source);
+      return {
+        ...source,
+        url: secure(source.url),
+        tier: tier || "auto",
+        providerTier: providerTierFor(tier),
+        format: source.format || source.type || source.extName || "",
+        bitrate: Number(source.br || 0),
+        br: Number(source.br || 0),
+        size: Number(source.size || 0),
+        trial: preview || !!source.trial
+      };
+    };
     let track = await request(q);
     if (!track?.url && q !== "128" && q !== "best" && !preview) {
       track = await request("128");
@@ -81615,6 +81642,7 @@ function requestFromHost(host, route, params, transport) {
 function create(host, options = {}) {
   const manifest = host.manifest || {};
   const transport = options.transport || import_qq_transport.default;
+  transport.configure?.(host.env?.() || {});
   const localHost = {
     ...host,
     authenticated: () => !!host.cookies().qqmusic_session,

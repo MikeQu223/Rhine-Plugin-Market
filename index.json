@@ -5,7 +5,7 @@
             "id": "netease",
             "name": "网易云音乐",
             "description": "搜索 · 个人音乐 · 推荐 · 播放 · 歌单编辑",
-            "version": "1.0.0",
+            "version": "2.1.0",
             "publisher": "local-p1",
             "license": "MIT",
             "path": "plugins/netease",
@@ -30,14 +30,19 @@
                 "upstream/LICENSE",
                 "upstream/auth.js",
                 "upstream/source.json",
-                "upstream/user.js"
+                "upstream/user.js",
+                "assets/quality/sq.png",
+                "assets/quality/hires.png",
+                "assets/quality/jymaster.png",
+                "assets/quality/jyeffect.png",
+                "assets/quality/sky.png"
             ]
         },
         {
             "id": "qq",
             "name": "QQ 音乐",
             "description": "全类搜索 · 每日推荐 · 个人音乐 · 歌单编辑",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "publisher": "local-p1",
             "license": "MIT",
             "path": "plugins/qq",
@@ -49,14 +54,16 @@
                 "LICENSE",
                 "LyricsKit-LICENSE",
                 "THIRD-PARTY-NOTICES.md",
-                "sbom.cdx.json"
+                "sbom.cdx.json",
+                "assets/quality/sq.png",
+                "assets/quality/hq.png"
             ]
         },
         {
             "id": "kugou",
             "name": "酷狗音乐",
             "description": "标准版 / 概念版 · 个人歌单 · 推荐与榜单 · 播放",
-            "version": "1.0.0",
+            "version": "2.0.0",
             "publisher": "local-p1",
             "license": "MIT",
             "path": "plugins/kugou",
@@ -68,7 +75,10 @@
                 "LICENSE",
                 "LyricsKit-LICENSE",
                 "THIRD-PARTY-NOTICES.md",
-                "sbom.cdx.json"
+                "sbom.cdx.json",
+                "assets/quality/sq.png",
+                "assets/quality/hq.png",
+                "assets/quality/hires.png"
             ]
         }
     ]

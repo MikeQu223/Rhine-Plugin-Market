@@ -70269,15 +70269,20 @@ var require_kugou_transport = __commonJS({
       return { dispatch };
     }
     var bridge;
+    var pluginEnv = {};
+    function configure(env) {
+      pluginEnv = { ...pluginEnv, ...env || {} };
+    }
     function initialize() {
-      if (process.env.RHINE_KUGOU_EDITION === "lite") {
+      const edition = pluginEnv.RHINE_KUGOU_EDITION ?? process.env.RHINE_KUGOU_EDITION;
+      if (edition === "lite") {
         process.env.platform = "lite";
       } else {
         delete process.env.platform;
       }
       const util = require_util();
       const { cryptoMd5 } = require_crypto();
-      const location = process.env.RHINE_KUGOU_DEVICE_STATE_PATH;
+      const location = pluginEnv.RHINE_KUGOU_DEVICE_STATE_PATH ?? process.env.RHINE_KUGOU_DEVICE_STATE_PATH;
       let device;
       if (location && fs.existsSync(location)) {
         device = JSON.parse(fs.readFileSync(location, "utf8"));
@@ -70311,6 +70316,7 @@ var require_kugou_transport = __commonJS({
     module2.exports = {
       ROUTES,
       createBridge,
+      configure,
       dispatch(message) {
         bridge ||= initialize();
         return bridge.dispatch(message);
@@ -70430,10 +70436,17 @@ function playbackTier(track) {
     return bitrate >= 192e3 ? "hq" : "standard";
   }
   if (["flac", "ape", "alac", "wav"].includes(format)) {
-    return Number(track.sampleRate || 0) > 48e3 && Number(track.bitDepth || 0) > 16 ? "hires" : "sq";
+    return Number(track.sampleRate || 0) > 48e3 && Number(track.bitDepth || 0) > 16 ? "hires" : "lossless";
   }
   return "";
 }
+var providerTierFor = (tier) => ({
+  standard: "standard",
+  hq: "exhigh",
+  lossless: "lossless",
+  hires: "hires",
+  master: "lossless"
+})[tier] || "";
 var identifier = (value) => /^[a-zA-Z0-9_-]{1,100}$/.test(String(value ?? "")) ? String(value) : "";
 var albumIdentifier = (...values) => values.map(identifier).find((value) => value && value !== "0") || "";
 var cover = (value) => String(value || "").replace("{size}", "480").replace(/^http:/, "https:");
@@ -70889,9 +70902,11 @@ var KugouAPI = class {
     if (quality === "jymaster" && !track.qualityFallback) {
       track.qualityFallback = "\u65E0\u635F";
     }
+    const tier = playbackTier(track);
     return {
       ...track,
-      tier: playbackTier(track) || "auto",
+      tier: tier || "auto",
+      providerTier: providerTierFor(tier),
       format: track.extName || "",
       bitrate: Number(track.br || 0),
       br: Number(track.br || 0),
@@ -71007,6 +71022,7 @@ function requestFromHost(host, route, params, transport) {
 function create(host, options = {}) {
   const manifest = host.manifest || {};
   const transport = options.transport || import_kugou_transport.default;
+  transport.configure?.(host.env?.() || {});
   const localHost = {
     ...host,
     authenticated: () => !!host.cookies().__kugou?.token,

@@ -1,15 +1,15 @@
 {
-    "schemaVersion": 1,
-    "apiVersion": "1.0",
+    "schemaVersion": 2,
+    "apiVersion": "2.0",
     "id": "kugou",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "kind": "official",
     "publisher": "local-p1",
-    "requiresHost": ">=1.0 <2.0",
+    "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "0b19c954f122f22bfe086334a750299d7718cd6dd045df69b9b09bf903a929bc",
-        "size": 2293969
+        "sha256": "4b895f431048d838d6f5268839c57fba7886eb3de93600ed772ba579dc73b0c4",
+        "size": 2294474
     },
     "files": [
         {
@@ -31,6 +31,21 @@
             "path": "sbom.cdx.json",
             "sha256": "dc4dcd727fc5be7749d65e0aca1e9abb97203385a404a266e3a0f343203783f6",
             "size": 291
+        },
+        {
+            "path": "assets/quality/sq.png",
+            "sha256": "19428d838192fd42267e185ecf04fe29e9f67587335d3d08448253bf6560764f",
+            "size": 5576
+        },
+        {
+            "path": "assets/quality/hq.png",
+            "sha256": "549f32454034c0b31c009458f1e41c7ba5f410cfa2bfd9fb911caaf5031a22c0",
+            "size": 8540
+        },
+        {
+            "path": "assets/quality/hires.png",
+            "sha256": "03e4ad9428c402ee00a403479dcde406a975f9e77206e5401b4dc66dddb7de06",
+            "size": 5658
         }
     ],
     "license": "MIT",
@@ -42,7 +57,12 @@
         ],
         "mobileBundled": true,
         "sourceEntry": "index.mjs",
-        "bundled": true
+        "bundled": true,
+        "diagnosticsOrdinal": 3,
+        "env": {
+            "RHINE_KUGOU_EDITION": "$variant",
+            "RHINE_KUGOU_DEVICE_STATE_PATH": "$dataDir/kugou-device.json"
+        }
     },
     "routes": {
         "prefixes": [
@@ -55,9 +75,50 @@
         "secretState": true,
         "deviceState": true,
         "variants": [
-            "standard",
-            "lite"
-        ]
+            {
+                "id": "standard",
+                "label": "标准版"
+            },
+            {
+                "id": "lite",
+                "label": "概念版"
+            }
+        ],
+        "variantPreference": "provider-variant-kugou",
+        "inject": {
+            "__kugou": {
+                "secret": "$variant",
+                "object": true
+            }
+        },
+        "responseSecrets": {
+            "kugouCredentials": "$variant"
+        },
+        "auth": {
+            "anyOf": [
+                {
+                    "allOf": [
+                        {
+                            "secret": "$variant.token",
+                            "nonEmpty": true
+                        },
+                        {
+                            "secret": "$variant.userid",
+                            "kind": "positiveInteger"
+                        }
+                    ]
+                }
+            ],
+            "expiredCodes": [
+                401
+            ]
+        },
+        "legacy": {
+            "secrets": {
+                "__kugou": "$root"
+            }
+        },
+        "deviceFile": "kugou-device.json"
     },
     "upstream": [],
     "display": {
@@ -187,7 +248,12 @@
             "jyeffect": "高清臻音",
             "sky": "沉浸环绕声"
         },
-        "badgeBackground": true
+        "badgeBackground": true,
+        "badges": {
+            "sq": "assets/quality/sq.png",
+            "hq": "assets/quality/hq.png",
+            "hires": "assets/quality/hires.png"
+        }
     },
     "login": {
         "required": false,
@@ -300,5 +366,50 @@
         "loginBegin": true,
         "loginPoll": true,
         "loginCancel": true
+    },
+    "cache": {
+        "version": "2.0.0-1",
+        "ttlByOperation": {
+            "songs": 86400,
+            "wiki": 86400,
+            "trackPage": 21600,
+            "detail": 21600,
+            "artistAlbums": 21600,
+            "userPlaylists": 60,
+            "likedSongs": 60,
+            "account": 1800,
+            "discover": 900,
+            "categories": 900,
+            "search": 900,
+            "suggest": 900
+        },
+        "diskOperations": [
+            "songs",
+            "wiki",
+            "detail",
+            "artistAlbums",
+            "discover",
+            "categories",
+            "search"
+        ],
+        "disk": "guest",
+        "maxEntries": 256,
+        "invalidateOn": [
+            "login",
+            "logout",
+            "mutation",
+            "variant"
+        ],
+        "ttlByRoute": {
+            "/kugou/search": 900,
+            "/kugou/privilege/lite": 21600,
+            "/kugou/album/detail": 21600,
+            "/kugou/artist/detail": 21600,
+            "/kugou/playlist/detail": 600,
+            "/kugou/user/playlist": 60,
+            "/kugou/login": 0,
+            "/kugou/song/url": 0,
+            "/kugou/register": 0
+        }
     }
 }

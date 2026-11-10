@@ -204806,7 +204806,7 @@ var require_request = __commonJS({
     var tunnel = require_tunnel2();
     var fs = require("fs");
     var path = require("path");
-    var tmpPath = require("os").tmpdir();
+    var tmpPath = globalThis.__rhineTmpdir || require("os").tmpdir();
     var {
       cookieToJson,
       cookieObjToString,
@@ -239608,6 +239608,70 @@ var require_song_wiki_summary = __commonJS({
   }
 });
 
+// MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/comment_new.js
+var require_comment_new = __commonJS({
+  "MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/comment_new.js"(exports2, module2) {
+    var { resourceTypeMap } = require_config();
+    var createOption = require_option();
+    module2.exports = (query, request) => {
+      query.type = resourceTypeMap[query.type];
+      const threadId = query.type + query.id;
+      const pageSize = query.pageSize || 20;
+      const pageNo = query.pageNo || 1;
+      let sortType = Number(query.sortType) || 99;
+      if (sortType === 1) {
+        sortType = 99;
+      }
+      let cursor = "";
+      switch (sortType) {
+        case 99:
+          cursor = (pageNo - 1) * pageSize;
+          break;
+        case 2:
+          cursor = "normalHot#" + (pageNo - 1) * pageSize;
+          break;
+        case 3:
+          cursor = query.cursor || "0";
+          break;
+        default:
+          break;
+      }
+      const data = {
+        threadId,
+        pageNo,
+        showInner: query.showInner || true,
+        pageSize,
+        cursor,
+        sortType
+        //99:按推荐排序,2:按热度排序,3:按时间排序
+      };
+      return request(`/api/v2/resource/comments`, data, createOption(query));
+    };
+  }
+});
+
+// MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/comment_floor.js
+var require_comment_floor = __commonJS({
+  "MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/comment_floor.js"(exports2, module2) {
+    var { resourceTypeMap } = require_config();
+    var createOption = require_option();
+    module2.exports = (query, request) => {
+      query.type = resourceTypeMap[query.type];
+      const data = {
+        parentCommentId: query.parentCommentId,
+        threadId: query.type + query.id,
+        time: query.time || -1,
+        limit: query.limit || 20
+      };
+      return request(
+        `/api/resource/comment/floor/get`,
+        data,
+        createOption(query, "weapi")
+      );
+    };
+  }
+});
+
 // MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/lyric_new.js
 var require_lyric_new = __commonJS({
   "MusicBridge/local-plugins/netease/node_modules/@neteasecloudmusicapienhanced/api/module/lyric_new.js"(exports2, module2) {
@@ -239686,6 +239750,8 @@ var require_netease_endpoints = __commonJS({
       "playlist_catlist": require_playlist_catlist(),
       "toplist": require_toplist(),
       "song_wiki_summary": require_song_wiki_summary(),
+      "comment_new": require_comment_new(),
+      "comment_floor": require_comment_floor(),
       "lyric_new": require_lyric_new(),
       "lyric": require_lyric()
     };
@@ -245618,6 +245684,8 @@ var require_netease_transport = __commonJS({
       "/playlist/catlist": "playlist_catlist",
       "/toplist": "toplist",
       "/song/wiki/summary": "song_wiki_summary",
+      "/comment/new": "comment_new",
+      "/comment/floor": "comment_floor",
       "/lyric/new": "lyric_new",
       "/lyric": "lyric"
     });
@@ -245925,20 +245993,67 @@ function playbackTier(track) {
     standard: "standard",
     higher: "hq",
     exhigh: "hq",
-    lossless: "sq",
+    lossless: "lossless",
     hires: "hires",
-    jyeffect: "jyeffect",
-    sky: "sky",
-    jymaster: "jymaster"
+    jyeffect: "hq",
+    sky: "hires",
+    jymaster: "master"
   };
   const level = String(track?.level || "");
   if (levels[level] && (!lossy || ["standard", "hq"].includes(levels[level]))) {
     return levels[level];
   }
   if (["flac", "ape", "alac"].includes(format)) {
-    return Number(track?.sampleRate || 0) > 48e3 && Number(track?.bitDepth || 0) > 16 ? "hires" : "sq";
+    return Number(track?.sampleRate || 0) > 48e3 && Number(track?.bitDepth || 0) > 16 ? "hires" : "lossless";
   }
   return "";
+}
+var providerTierFor = (tier, level = "") => level || {
+  standard: "standard",
+  hq: "exhigh",
+  lossless: "lossless",
+  hires: "hires",
+  master: "jymaster"
+}[tier] || "";
+function commentReply(raw) {
+  const user = raw?.user || {};
+  const replied = Array.isArray(raw?.beReplied) ? raw.beReplied[0]?.user?.nickname : "";
+  const content = String(raw?.content ?? "").trim();
+  const id = String(raw?.commentId ?? raw?.id ?? "");
+  if (!content || !id) {
+    return null;
+  }
+  return {
+    id,
+    content,
+    nickname: String(user.nickname ?? raw?.nickname ?? "\u7528\u6237"),
+    userId: String(user.userId ?? raw?.userId ?? ""),
+    time: Number(raw?.time ?? 0),
+    ...replied ? { replyTo: String(replied) } : {}
+  };
+}
+function commentItem(raw) {
+  const user = raw?.user || {};
+  const id = String(raw?.commentId ?? raw?.id ?? "");
+  let content = String(raw?.content ?? "").trim();
+  if (!content && (raw?.contentPicUrl || raw?.contentStickerExt)) {
+    content = "\u56FE\u7247\u8BC4\u8BBA";
+  }
+  if (!id || !content) {
+    return null;
+  }
+  return {
+    id,
+    content,
+    nickname: String(user.nickname ?? raw?.nickname ?? "\u7528\u6237"),
+    userId: String(user.userId ?? raw?.userId ?? ""),
+    avatarUrl: String(user.avatarUrl ?? raw?.avatarUrl ?? ""),
+    time: Number(raw?.time ?? 0),
+    likedCount: Number(raw?.likedCount ?? 0),
+    replyCount: Number(raw?.replyCount ?? 0),
+    inlineReplies: (Array.isArray(raw?.beReplied) ? raw.beReplied : []).map(commentReply).filter(Boolean).slice(0, 2),
+    ...raw?.ipLocation?.location ? { location: String(raw.ipLocation.location) } : {}
+  };
 }
 var API = class {
   constructor(host) {
@@ -246140,15 +246255,19 @@ var API = class {
     if (!track?.url) {
       throw new Error("\u6B64\u6B4C\u66F2\u6682\u65E0\u53EF\u7528\u97F3\u6E90\uFF0C\u8BF7\u767B\u5F55\u6216\u5728\u7F51\u6613\u4E91\u6253\u5F00");
     }
-    const withMediaFields = (source) => ({
-      ...source,
-      url: String(source.url || "").replace(/^http:\/\//i, "https://"),
-      tier: playbackTier(source) || "auto",
-      format: source.type || source.extName || "",
-      bitrate: Number(source.br || 0),
-      br: Number(source.br || 0),
-      size: Number(source.size || 0)
-    });
+    const withMediaFields = (source) => {
+      const tier = playbackTier(source);
+      return {
+        ...source,
+        url: String(source.url || "").replace(/^http:\/\//i, "https://"),
+        tier: tier || "auto",
+        providerTier: providerTierFor(tier, source.level),
+        format: source.type || source.extName || "",
+        bitrate: Number(source.br || 0),
+        br: Number(source.br || 0),
+        size: Number(source.size || 0)
+      };
+    };
     if (alternative && String(responseBody.msg || "").startsWith("Warning: Customizing unblock sources")) {
       const matchedTrack = { ...track };
       delete matchedTrack.level;
@@ -246508,7 +246627,67 @@ var API = class {
     }
     const payload = route === "/like" ? { ...values, like: values.like === true || values.like === "true" ? "true" : "false" } : values;
     const body = await this.request(route, payload, [200], valid);
-    return { ...body, applied: true };
+    const result2 = { ...body, applied: true };
+    if (route === "/like") {
+      result2.state = payload.like === "true" ? "subscribed" : "not-subscribed";
+    } else if (["/album/sub", "/artist/sub", "/playlist/subscribe"].includes(route)) {
+      result2.state = String(values.t) === "1" || String(values.t) === "true" ? "subscribed" : "not-subscribed";
+    } else if (route === "/playlist/create") {
+      if (body.name) {
+        result2.name = body.name;
+      }
+    } else if (route === "/playlist/name/update") {
+      result2.name = values.name;
+    }
+    return result2;
+  }
+  async comments(track, id, sort = "hot", page = 0, cursor = "", valid = () => true) {
+    const target = String(id ?? track?.id ?? "");
+    if (!target) {
+      throw new Error("\u6B4C\u66F2\u6807\u8BC6\u65E0\u6548");
+    }
+    const params = {
+      id: target,
+      type: 0,
+      pageNo: Math.max(0, Number(page) || 0) + 1,
+      pageSize: 20,
+      sortType: sort === "new" ? 3 : 2
+    };
+    if (cursor) {
+      params.cursor = cursor;
+    }
+    const body = await this.request("/comment/new", params, [200], valid);
+    const data = body.data || {};
+    return {
+      comments: Array.isArray(data.comments) ? data.comments.map(commentItem).filter(Boolean) : [],
+      totalCount: Number(data.totalCount ?? body.total ?? 0),
+      hasMore: Boolean(data.hasMore ?? data.more),
+      cursor: String(data.cursor ?? "")
+    };
+  }
+  async commentReplies(track, id, parentCommentId, cursor = "-1", limit = 20, valid = () => true) {
+    const target = String(id ?? track?.id ?? "");
+    if (!target || !parentCommentId) {
+      throw new Error("\u6B4C\u66F2\u6216\u8BC4\u8BBA\u6807\u8BC6\u65E0\u6548");
+    }
+    const body = await this.request(
+      "/comment/floor",
+      {
+        id: target,
+        type: 0,
+        parentCommentId: String(parentCommentId),
+        limit: Math.max(1, Number(limit) || 20),
+        time: String(cursor || "-1")
+      },
+      [200],
+      valid
+    );
+    const data = body.data || {};
+    return {
+      comments: Array.isArray(data.comments) ? data.comments.map(commentReply).filter(Boolean) : [],
+      hasMore: Boolean(data.hasMore),
+      time: String(data.time ?? "")
+    };
   }
   async likedSongs(offset = 0, valid = () => true) {
     const me = await this.account(valid);

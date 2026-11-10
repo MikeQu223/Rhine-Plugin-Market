@@ -1,15 +1,15 @@
 {
-    "schemaVersion": 1,
-    "apiVersion": "1.0",
+    "schemaVersion": 2,
+    "apiVersion": "2.0",
     "id": "netease",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "kind": "official",
     "publisher": "local-p1",
-    "requiresHost": ">=1.0 <2.0",
+    "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "f8d89ee83c4166c6ae74f4ced0ab00922e8779fa5d507fc6ef795ee7c1a9b372",
-        "size": 11054038
+        "sha256": "8c6e839fc74553e440e12dc519eb968c1ced12f01945c2f6e49c1413649dd30b",
+        "size": 11060274
     },
     "files": [
         {
@@ -96,6 +96,31 @@
             "path": "upstream/user.js",
             "sha256": "f122789b3a8529b7b72de308e74612b488bcbf5f2202fb3def69e83b3fe0b278",
             "size": 5030
+        },
+        {
+            "path": "assets/quality/sq.png",
+            "sha256": "8ff7193f4793dc37dfdccefbbd677ac42bec560a6a026be116107e9dd45ade1a",
+            "size": 3161
+        },
+        {
+            "path": "assets/quality/hires.png",
+            "sha256": "b63cfd7e3e6d7e5a9da1af04a9bc79e83d8ecd069de4e4dfbc5eb2dbdc865621",
+            "size": 3617
+        },
+        {
+            "path": "assets/quality/jymaster.png",
+            "sha256": "544513501f54366da23a56ade2667b25054d06c18ff1273248cf4618faca1a11",
+            "size": 5573
+        },
+        {
+            "path": "assets/quality/jyeffect.png",
+            "sha256": "c6293ccdf2b28f241dda9535fd1e8e2f18108d3708440eb5c0c434debfd2dd62",
+            "size": 5377
+        },
+        {
+            "path": "assets/quality/sky.png",
+            "sha256": "05d3460e5d430f4096b5903ff72c927c5c9e9e85ccf268be583a90ce33895db5",
+            "size": 4436
         }
     ],
     "license": "MIT",
@@ -107,7 +132,8 @@
         ],
         "mobileBundled": true,
         "sourceEntry": "index.mjs",
-        "bundled": true
+        "bundled": true,
+        "diagnosticsOrdinal": 1
     },
     "routes": {
         "legacyRoutes": [
@@ -154,7 +180,21 @@
         "namespace": "netease",
         "shape": "opaque",
         "secretState": false,
-        "deviceState": false
+        "deviceState": false,
+        "auth": {
+            "anyOf": [
+                {
+                    "cookie": "MUSIC_U"
+                }
+            ],
+            "expiredCodes": [
+                301,
+                401
+            ]
+        },
+        "legacy": {
+            "default": true
+        }
     },
     "upstream": [],
     "display": {
@@ -196,7 +236,8 @@
             "createPlaylist": true,
             "renamePlaylist": true,
             "deletePlaylist": true
-        }
+        },
+        "comments": true
     },
     "library": {
         "columns": [
@@ -317,6 +358,13 @@
             "jymaster": "超清母带",
             "jyeffect": "高清臻音",
             "sky": "沉浸环绕声"
+        },
+        "badges": {
+            "sq": "assets/quality/sq.png",
+            "hires": "assets/quality/hires.png",
+            "jymaster": "assets/quality/jymaster.png",
+            "jyeffect": "assets/quality/jyeffect.png",
+            "sky": "assets/quality/sky.png"
         }
     },
     "login": {
@@ -468,6 +516,81 @@
         "loginSms": true,
         "loginSubmit": true,
         "likedState": true,
-        "mutate": true
+        "mutate": true,
+        "comments": true,
+        "commentReplies": true
+    },
+    "cache": {
+        "version": "2.1.0-1",
+        "ttlByOperation": {
+            "songs": 86400,
+            "wiki": 86400,
+            "detail": 21600,
+            "artistAlbums": 21600,
+            "userPlaylists": 60,
+            "likedIDs": 60,
+            "likedSongs": 60,
+            "likedAlbums": 60,
+            "account": 1800,
+            "discover": 900,
+            "categories": 900,
+            "search": 900,
+            "suggest": 900
+        },
+        "diskOperations": [
+            "songs",
+            "wiki",
+            "detail",
+            "artistAlbums",
+            "discover",
+            "categories",
+            "search"
+        ],
+        "disk": "guest",
+        "maxEntries": 256,
+        "invalidateOn": [
+            "login",
+            "logout",
+            "mutation",
+            "variant"
+        ],
+        "ttlByRoute": {
+            "/search": 900,
+            "/search/suggest": 900,
+            "/song/detail": 86400,
+            "/song/wiki/summary": 86400,
+            "/album": 21600,
+            "/artists": 21600,
+            "/artist/album": 21600,
+            "/playlist/detail": 600,
+            "/user/playlist": 600,
+            "/likelist": 600,
+            "/album/sublist": 600,
+            "/artist/sublist": 600,
+            "/user/account": 1800,
+            "/personalized": 900,
+            "/toplist": 900,
+            "/album/newest": 900,
+            "/top/playlist": 900,
+            "/playlist/catlist": 900,
+            "/recommend/songs": 60,
+            "/login/qr/key": 0,
+            "/login/qr/check": 0,
+            "/song/url": 0,
+            "/song/url/v1": 0
+        }
+    },
+    "externalPlayback": {
+        "type": "url-scheme",
+        "scheme": "orpheus",
+        "payload": "{\"type\":\"song\",\"id\":\"{id}\",\"cmd\":\"play\"}",
+        "encoding": "base64",
+        "application": {
+            "bundleId": "com.netease.163music",
+            "name": "网易云音乐",
+            "missingMessage": "未安装网易云音乐，请安装官方客户端后重试"
+        },
+        "successMessage": "已交给网易云；若冷启动未切歌，可手动重试",
+        "failureMessage": "交付失败：无法启动网易云客户端"
     }
 }
