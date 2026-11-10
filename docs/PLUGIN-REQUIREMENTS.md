@@ -174,6 +174,9 @@ export interface PluginRuntime {
 - 不要直接写 stdout/stderr；worker 的 stdout 是 JSON-line IPC。诊断只能用 `host.diagnostics.record`。
 - 不读取其他 provider 的 cookie/secret；不把 cookie、token、原始 URL 写进日志、诊断或错误消息。
 - `dispose()` 不是每请求清理钩子；需要跨请求缓存时放在模块级或 transport 单例。
+- 不得使用 RegExp Unicode 属性转义（`\p{...}` / `\P{...}`，含字符串形式）：移动端 libnode 没有完整 ICU，
+  插件会在加载阶段被判 `plugin.load-failed`。需要 UTF-8 校验时用 `node:buffer` 的 `isUtf8`，
+  不要依赖 `TextDecoder` 的 `fatal` 选项。
 
 ## 5. 统一模型
 
@@ -255,7 +258,8 @@ node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
 - 播放 tier、试听/受限/无 URL；
 - 歌词 `null` 与有歌词；
 - mutation 的 `applied` 与未确认写入；
-- 错误路径不泄漏 cookie/token。
+- 错误路径不泄漏 cookie/token；
+- `runtime.mobileBundled` 插件入口不含 `\p{...}`（`check-marketplace.cjs` 会拦截）。
 
 ## 8. 验收清单
 

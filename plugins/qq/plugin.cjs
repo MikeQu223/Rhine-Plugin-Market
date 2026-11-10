@@ -25411,7 +25411,7 @@ var require_regexes = __commonJS({
     exports2.unicodeEmail = /^[^\s@"]{1,64}@[^\s@]{1,255}$/u;
     exports2.idnEmail = exports2.unicodeEmail;
     exports2.browserEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    var _emoji = `^(?=[\\s\\S]*[\\p{Extended_Pictographic}\\p{Regional_Indicator}\\u20E3])[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$`;
+    var _emoji = `^(?=[\\s\\S]*[\\u{1F000}-\\u{1FAFF}\\u{1F1E6}-\\u{1F1FF}\\u{2600}-\\u{27BF}\\u{20E3}])[\\u{1F000}-\\u{1FAFF}\\u{1F1E6}-\\u{1F1FF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}\\u{200D}\\u{20E3}#*0-9]+$`;
     function emoji() {
       return new RegExp(_emoji, "u");
     }

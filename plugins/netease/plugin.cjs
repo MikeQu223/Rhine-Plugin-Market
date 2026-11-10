@@ -246086,7 +246086,7 @@ var API = class {
     try {
       const keywords = String(song.name || value.title || "").trim();
       if (keywords) {
-        const titleKey = (title) => String(title).normalize("NFKC").toLowerCase().split(/\s*\(\s*(?:feat\.?|ft\.?|featuring)\s/i)[0].replace(/[\s\p{P}\p{S}]/gu, "");
+        const titleKey = (title) => String(title).normalize("NFKC").toLowerCase().split(/\s*\(\s*(?:feat\.?|ft\.?|featuring)\s/i)[0].replace(/[\s!-\/:-@\[-`{-~ -¿ -⁯　-〿＀-￯]/gu, "");
         const songKey = titleKey(keywords);
         const matchesSong = (name) => {
           const candidate = titleKey(name);

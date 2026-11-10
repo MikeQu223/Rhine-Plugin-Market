@@ -8,8 +8,8 @@
     "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "8c6e839fc74553e440e12dc519eb968c1ced12f01945c2f6e49c1413649dd30b",
-        "size": 11060274
+        "sha256": "b61deaabf9619e794be9867bda25db39b73fa3c06608ed4f13e2cfab269df094",
+        "size": 11060302
     },
     "files": [
         {

@@ -53,6 +53,27 @@ node scripts/bundle-plugins.cjs MusicBridge/local-plugins <id>
 构建器读取 `manifest.runtime.sourceEntry`，用 esbuild 打成单文件 CJS，执行插件自己的 `build.cjs`，
 回写 `entry.sha256`、`entry.size` 和 `runtime.bundled`。发布目录不应依赖 `node_modules`。
 
+### 移动端运行时限制
+
+移动端（iOS / Android）的 libnode 18 没有编译完整 ICU，市场包会原样跑在这套运行时上：
+
+- **不要使用 RegExp Unicode 属性转义**：`\p{...}`、`\P{...}`，包括写进字符串再交给 `new RegExp` 的形式。
+  模块加载阶段就会编译的正则字面量会直接抛 `SyntaxError: Invalid property name in character class`，
+  整个插件被判为 `plugin.load-failed`。
+- 改用显式字符区段，按实际需要调整范围：
+
+```js
+// 不要这样写：移动端没有完整 ICU，加载阶段就抛 SyntaxError。
+text.replace(/[\s\p{P}\p{S}]/gu, '');
+
+// 改为显式区段（空白、ASCII 标点、CJK 与全角标点/符号）。
+text.replace(/[\s!-\/:-@\[-\x60{-~\u00A0-\u00BF\u2000-\u206F\u3000-\u303F\uFF00-\uFFEF]/g, '');
+```
+
+- **不要依赖 `TextDecoder` 的 `fatal` 选项**：无 ICU 的运行时会抛 `ERR_NO_ICU`。需要校验 UTF-8 时用
+  `require('node:buffer').isUtf8()`；客户端虽已加兼容，也不能把它当作可用前提。
+- `runtime.mobileBundled: true` 的插件入口会被市场检查扫描 `\p{...}`，命中即发布失败。
+
 ## 3. 先写 manifest
 
 manifest 是插件边界，不是事后补充。先回答：
@@ -314,6 +335,7 @@ printf '%s\n' '{"id":"1","route":"/native/<id>/search","params":{"args":["hello"
 12. 依赖 core 调用 `dispose()` 做每请求清理。
 13. 在插件里读取其他 provider 的 cookie，或把 token 写进错误消息。
 14. 把平台名称/文案/资产放进主仓库；应放在插件目录或本地 `docs/PLUGIN/`。
+15. 在插件里使用 `\p{...}` 正则；移动端 libnode 没有完整 ICU，插件加载阶段就会失败。
 
 ## 13. 验收清单
 
