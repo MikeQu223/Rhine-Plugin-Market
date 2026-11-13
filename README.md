@@ -75,3 +75,4 @@ https://raw.githubusercontent.com/MikeQu223/Rhine-Plugin-Market/main/index.json
 - **[NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)**: 网易云接入
 - **[MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)**: 酷狗音乐标准版及概念版接入
 - **[yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api)**: QQ 音乐接入
+- **[amqsy/mygo-music-bodian](https://github.com/amqsy/mygo-music-bodian)**: 波点音乐接入

@@ -1,0 +1,259 @@
+{
+    "schemaVersion": 2,
+    "apiVersion": "2.0",
+    "id": "bodian",
+    "version": "0.1.0",
+    "kind": "community",
+    "publisher": "local",
+    "requiresHost": ">=2.0 <3.0",
+    "entry": {
+        "file": "plugin.cjs",
+        "sha256": "cf6f12cf3314fc4b820189f1dc4aaabc30a4e117780240614fdce12b16af26dc",
+        "size": 55769
+    },
+    "files": [],
+    "license": "MIT",
+    "attribution": "THIRD-PARTY-NOTICES.md",
+    "runtime": {
+        "hosting": [
+            "module"
+        ],
+        "sourceEntry": "index.mjs",
+        "bundled": true,
+        "diagnosticsOrdinal": 9
+    },
+    "credentials": {
+        "namespace": "bodian",
+        "shape": "opaque",
+        "auth": {
+            "anyOf": [
+                {
+                    "cookie": "bodian_token"
+                }
+            ],
+            "expiredCodes": [
+                401
+            ]
+        },
+        "legacy": {
+            "default": false
+        }
+    },
+    "display": {
+        "name": "波点音乐",
+        "label": "BODIAN",
+        "detail": "搜索 · 播放 · 歌词 · 歌单",
+        "sessionLabel": "BODIAN SESSION",
+        "order": 50
+    },
+    "capabilities": {
+        "search": true,
+        "suggest": true,
+        "detail": true,
+        "playback": true,
+        "preview": true,
+        "lyrics": true,
+        "account": true,
+        "login": true,
+        "discover": true,
+        "categories": true,
+        "userPlaylists": true,
+        "likedSongs": true,
+        "likedAlbums": true,
+        "mutations": {
+            "likeSong": true,
+            "subscribeAlbum": true,
+            "subscribePlaylist": true,
+            "subscribeArtist": true,
+            "updatePlaylistTracks": true
+        },
+        "playlistManagement": {
+            "createPlaylist": true,
+            "renamePlaylist": true,
+            "deletePlaylist": true
+        },
+        "comments": true
+    },
+    "library": {
+        "columns": [
+            "搜索结果",
+            "喜欢的歌曲",
+            "我的歌单",
+            "收藏歌单",
+            "收藏专辑"
+        ],
+        "sourceOrder": [
+            1,
+            2,
+            3,
+            4,
+            0
+        ],
+        "lanes": 5,
+        "likedModel": "likedIDs",
+        "playlistNameMaxLength": 50,
+        "playlistEditableRule": "all",
+        "dirIdRange": null
+    },
+    "quality": {
+        "default": "high",
+        "options": [
+            {
+                "id": "standard",
+                "label": "标准",
+                "tier": "standard"
+            },
+            {
+                "id": "high",
+                "label": "高品质",
+                "tier": "hq"
+            },
+            {
+                "id": "lossless",
+                "label": "无损",
+                "tier": "lossless"
+            }
+        ],
+        "labels": {
+            "standard": "标准",
+            "hq": "高品质 / HQ",
+            "lossless": "无损 / SQ"
+        }
+    },
+    "login": {
+        "required": false,
+        "methods": [
+            {
+                "id": "qr",
+                "type": "qr",
+                "label": "扫码登录"
+            }
+        ],
+        "pollIntervalMs": 1500,
+        "pollTimeoutMs": 180000,
+        "failureMessages": {}
+    },
+    "discover": {
+        "enabled": true,
+        "defaultTab": "playlists",
+        "tabs": [
+            {
+                "id": "playlists",
+                "label": "推荐歌单"
+            },
+            {
+                "id": "daily",
+                "label": "每日推荐"
+            },
+            {
+                "id": "charts",
+                "label": "排行榜"
+            },
+            {
+                "id": "categories",
+                "label": "分类歌单"
+            },
+            {
+                "id": "guess",
+                "label": "猜你想听"
+            }
+        ]
+    },
+    "lyrics": {
+        "sources": [
+            "bodian"
+        ],
+        "fallback": [],
+        "matchMode": "strict",
+        "rateLimitMs": 0,
+        "retryDelaysMs": []
+    },
+    "media": {
+        "hosts": [
+            "kuwo.cn",
+            "*.kuwo.cn",
+            "kwcdn.kuwo.cn",
+            "*.kwcdn.kuwo.cn"
+        ],
+        "coverHosts": [
+            "kuwo.cn",
+            "*.kuwo.cn",
+            "kwcdn.kuwo.cn",
+            "*.kwcdn.kuwo.cn",
+            "qpic.y.qq.com",
+            "*.y.qq.com"
+        ],
+        "allowHttp": false,
+        "schemePolicy": "https"
+    },
+    "search": {
+        "enabled": true,
+        "maxQueryLength": 60,
+        "suggest": true,
+        "parseLinks": false
+    },
+    "strings": {
+        "loginHint": "可选登录；公开搜索与免费歌曲不需要账号",
+        "accountNote": "波点音乐账号独立保存",
+        "scanHint": "请用波点音乐 App 扫描并确认登录"
+    },
+    "operations": {
+        "search": true,
+        "suggest": true,
+        "songs": true,
+        "detail": true,
+        "trackPage": true,
+        "artistAlbums": true,
+        "playback": true,
+        "preview": true,
+        "lyrics": true,
+        "account": true,
+        "loginBegin": true,
+        "loginPoll": true,
+        "loginCancel": true,
+        "logout": true,
+        "userPlaylists": true,
+        "likedIDs": true,
+        "likedSongs": true,
+        "likedAlbums": true,
+        "likedState": true,
+        "discover": true,
+        "categories": true,
+        "mutate": true,
+        "comments": true
+    },
+    "cache": {
+        "version": "0.1.0-1",
+        "ttlByOperation": {
+            "songs": 86400,
+            "detail": 21600,
+            "trackPage": 21600,
+            "artistAlbums": 21600,
+            "userPlaylists": 60,
+            "likedIDs": 60,
+            "likedSongs": 60,
+            "likedAlbums": 60,
+            "account": 1800,
+            "discover": 900,
+            "categories": 900,
+            "search": 900,
+            "suggest": 900
+        },
+        "diskOperations": [
+            "songs",
+            "detail",
+            "trackPage",
+            "artistAlbums",
+            "discover",
+            "categories",
+            "search"
+        ],
+        "disk": "guest",
+        "maxEntries": 256,
+        "invalidateOn": [
+            "login",
+            "logout",
+            "mutation"
+        ]
+    }
+}
