@@ -2,14 +2,14 @@
     "schemaVersion": 2,
     "apiVersion": "2.0",
     "id": "netease",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "kind": "official",
     "publisher": "local-p1",
     "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "b61deaabf9619e794be9867bda25db39b73fa3c06608ed4f13e2cfab269df094",
-        "size": 11060302
+        "sha256": "c5910ba87385db3a5a803eb8e2286316d84a391f37c766b7970d23039d7f7724",
+        "size": 11936508
     },
     "files": [
         {
@@ -131,7 +131,6 @@
             "module"
         ],
         "mobileBundled": true,
-        "sourceEntry": "index.mjs",
         "bundled": true,
         "diagnosticsOrdinal": 1
     },
@@ -518,7 +517,8 @@
         "likedState": true,
         "mutate": true,
         "comments": true,
-        "commentReplies": true
+        "commentReplies": true,
+        "trackPage": true
     },
     "cache": {
         "version": "2.1.0-1",

@@ -2,14 +2,14 @@
     "schemaVersion": 2,
     "apiVersion": "2.0",
     "id": "qq",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "kind": "official",
     "publisher": "local-p1",
     "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "88c1474a2bdf525073c732eb918c1386ac767278175d3ad20a0ac8e79b797ac0",
-        "size": 3466393
+        "sha256": "e23a21f547a600fedbd6dbb92394dd0c633bb4b1437a6cb7020cd9a10dd3b3bc",
+        "size": 3751086
     },
     "files": [
         {
@@ -51,7 +51,6 @@
             "module"
         ],
         "mobileBundled": true,
-        "sourceEntry": "index.mjs",
         "bundled": true,
         "diagnosticsOrdinal": 2,
         "env": {
@@ -390,7 +389,8 @@
         "loginBegin": true,
         "loginPoll": true,
         "loginCancel": true,
-        "likedState": true
+        "likedState": true,
+        "trackPage": true
     },
     "cache": {
         "version": "2.0.0-1",

@@ -50,8 +50,11 @@ plugins/<id>/
 node scripts/bundle-plugins.cjs MusicBridge/local-plugins <id>
 ```
 
-构建器读取 `manifest.runtime.sourceEntry`，用 esbuild 打成单文件 CJS，执行插件自己的 `build.cjs`，
+常规构建器读取 `manifest.runtime.sourceEntry`，用 esbuild 打成单文件 CJS，执行插件自己的 `build.cjs`，
 回写 `entry.sha256`、`entry.size` 和 `runtime.bundled`。发布目录不应依赖 `node_modules`。
+市场中现有的网易云和 QQ 兼容包使用 `sources/<id>/` 与市场仓库的
+`node scripts/build-artist-plugins.cjs` 构建；其运行 manifest 不声明 `sourceEntry`。构建与测试细节
+见 [市场 README](../README.md#歌手歌曲分页插件的构建)。
 
 ### 移动端运行时限制
 
@@ -190,9 +193,14 @@ function track(raw) {
 分页：
 
 - 请求使用 `offset`，插件自己换算成 page/cursor。
-- `rawCount` 是本页实际返回数，不是累计值。
-- `more` 必须诚实；没有可靠 total 时用 `rawCount >= pageSize` 或上游 hasMore。
-- 空页必须 `more=false`。
+- `rawCount` 是本页消费的上游原始条目数，不是累计值或过滤后的 `items.length`。
+- `more` 必须反映可靠的上游分页信息；仅在确认上游行为允许时才用页大小推断。
+- 无法可靠判断后续页或已消费数量时，标记 `incomplete: true` 或抛出错误，并确保重试不会命中缓存。
+- `more=true` 必须伴随正的 `rawCount`；过滤后没有可显示条目时仍可按原始消费数继续分页。
+
+歌手页会对支持 `trackPage` 的来源从 `offset=0` 请求 `kind=artist`，滚动时继续补页；播放全部前
+补齐后续页面。旧插件只返回 `detail` 中的歌曲，无法保证完整。插件应按上游真实的完整歌曲接口
+实现，而不是把热门列表当成全部歌曲。
 
 平台特有字段放 `extensions`，不要污染 `Track` 顶层。
 

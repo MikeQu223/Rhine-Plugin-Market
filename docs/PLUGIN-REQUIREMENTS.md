@@ -62,7 +62,7 @@ plugins/<id>/
 | `display.name` / `display.label` / `display.detail` | 客户端展示；`display.default` 只能有一个插件声明 |
 | `capabilities` | UI 功能门控；声明了就必须真的可用 |
 | `operations` | 运行时 operation 白名单；声明了就必须实现 |
-| `runtime.sourceEntry` | 构建输入；构建器据此生成 `plugin.cjs` |
+| `runtime.sourceEntry` | 可选；常规构建器据此生成 `plugin.cjs`，由独立构建脚本处理的包可省略 |
 | `quality` | 音质选项；`id` 不透明，`tier` 使用统一档位 |
 | `library` | 资料库栏位、喜欢的模型、歌单编辑规则 |
 | `login` | 登录方式、轮询、失败文案 |
@@ -125,7 +125,7 @@ plugins/<id>/
 | `songs` | `(ids: string[])` | `Track[]` |
 | `detail` | `(ref: EntityRef)` | `[MusicEntity, Track[], string[]]` |
 | `artistAlbums` | `(id, offset)` | `Page<Album>` |
-| `trackPage` | `(ref, offset)` | `Page<Track>` |
+| `trackPage` | `(ref, offset)`，歌手页使用 `kind=artist` | `Page<Track>` |
 | `catalog` | `()` | `Page<MusicEntity>` |
 | `playback` | `(track, qualityId, alternative)` | `PlaybackSource` |
 | `preview` | `(track, qualityId, alternative)` | `PlaybackSource` |
@@ -197,7 +197,7 @@ worker 会在 native operation 返回后调用 `models.cjs` 校验；返回原�
 ```ts
 interface Page<T> {
     items: T[];
-    rawCount: number; // 本页实际返回数
+    rawCount: number; // 本页消费的上游原始条目数
     total?: number;
     more: boolean;
     notice?: string;
@@ -208,7 +208,15 @@ interface Page<T> {
 }
 ```
 
-`rawCount` 不是累计值；`more` 必须诚实；空页必须 `more=false`。
+`rawCount` 是本页消费的上游原始条目数，过滤和去重前计数，不是累计值或 `items.length`。
+`more=true` 时 `rawCount` 必须大于零；过滤后 `items` 为空但原始消费数大于零时仍可继续分页。
+无法可靠判断续页或原始消费数时，返回 `incomplete: true` 或抛出错误，不把部分结果标成完整。
+
+歌手页对声明了 `trackPage` 的来源从 `offset=0` 请求 `kind=artist`，按 `rawCount` 递增并去重；
+播放全部前会补齐后续页。请求失败或结果不完整时保留已显示歌曲并允许重试。未声明该 operation
+的旧插件继续使用 `detail` 返回的歌曲，不能保证完整。插件应使用上游完整歌曲分页，不能把热门
+列表视为完整曲库；排序和实际可读取范围以来源能力为准。如果缓存无法识别不完整响应，应关闭该
+operation 的缓存以保证重试有效。
 
 ### PlaybackSource
 

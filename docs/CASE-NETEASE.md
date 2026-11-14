@@ -1,9 +1,9 @@
 # 案例：从上游 API 仓库到 NetEase 插件
 
 本文件以市场中的 `plugins/netease/` 为例，说明一个平台插件如何从上游 Node API 包适配到 Rhine 契约。
-当前版本：`2.1.0`，manifest `schemaVersion: 2`、`apiVersion: "2.0"`。
+当前版本：`2.1.1`，manifest `schemaVersion: 2`、`apiVersion: "2.0"`。
 
-> 平台协议、上游依赖和平台资产只存在于插件目录；主仓库 core 不含这些内容。
+> 平台协议、上游依赖和平台资产只存在于独立插件仓库；主仓库 core 不含这些内容。
 > 通用契约见 [插件包要求](PLUGIN-REQUIREMENTS.md) 和 [适配器开发指南](ADAPTER-GUIDE.md)。
 
 ## 1. 目标
@@ -21,12 +21,10 @@
 Qt /native/netease/<operation>
   → worker PluginRegistry.load("netease")
   → plugin.cjs create(host)
-  → index.mjs dispatchNative(operation, args)
-  → netease.mjs API class
-  → netease-transport.cjs（route → upstream module）
-  → @neteasecloudmusicapienhanced/api module
-  → 上游 HTTP
-  → items.mjs / lyrics-format.cjs 归一化
+  → sources/netease/index.mjs 组合兼容基底与分页适配层
+  → 歌手歌曲：artist-songs.cjs → 上游 artist_songs module
+  → 其他操作：legacy.cjs 中的原有适配器与 transport
+  → 上游 HTTP，插件内归一化
   → models.cjs 校验
   → Host
 ```
@@ -47,7 +45,10 @@ Qt /native/netease/<operation>
 ## 3. 市场目录
 
 ```text
-plugins/netease/
+sources/netease/              # 构建源码，不随插件下载
+  index.mjs / artist-songs.cjs / build.cjs
+  legacy.cjs                  # 校验摘要的原插件兼容基底
+plugins/netease/              # 市场运行时文件
   manifest.json
   plugin.cjs                 # 构建产物，约 11 MB
   upstream/auth.js
@@ -73,10 +74,10 @@ plugins/netease/
     "schemaVersion": 2,
     "apiVersion": "2.0",
     "id": "netease",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "requiresHost": ">=2.0 <3.0",
     "entry": { "file": "plugin.cjs" },
-    "runtime": { "hosting": ["module"], "sourceEntry": "index.mjs", "bundled": true },
+    "runtime": { "hosting": ["module"], "bundled": true },
     "operations": {
         "search": true,
         "suggest": true,
@@ -84,6 +85,7 @@ plugins/netease/
         "songs": true,
         "detail": true,
         "artistAlbums": true,
+        "trackPage": true,
         "playback": true,
         "lyrics": true,
         "account": true,
@@ -142,7 +144,7 @@ plugins/netease/
 
 ## 5. 入口与 transport
 
-入口只做分派：
+当前入口组合兼容基底和歌手歌曲分页适配层。下例仅展示一般分派模式，不是当前入口源码：
 
 ```js
 export function create(host) {
@@ -171,7 +173,7 @@ export function create(host) {
 }
 ```
 
-transport 维护“插件 route → 上游 module”白名单：
+兼容基底的 transport 维护“插件 route → 上游 module”白名单，例如：
 
 ```js
 const routes = Object.freeze({
@@ -185,6 +187,9 @@ const routes = Object.freeze({
 ```
 
 只 require 需要的 module；不要引入上游整个 server/中间件。
+歌手歌曲分页由 `sources/netease/artist-songs.cjs` 单独调用锁定版本的 `artist_songs` 模块，
+复用兼容基底的请求实现和歌曲映射，不修改上游模块。`detail` 仍可返回热门歌曲作为兼容数据；
+支持分页的本体从第零页加载全部歌曲。接口按热门顺序排列不意味着只返回热门歌曲。
 
 ## 6. 条目归一化
 
@@ -209,7 +214,9 @@ function track(raw) {
 }
 ```
 
-分页时 `rawCount` 是本页实际数量；`more` 必须诚实；空页 `more=false`。
+分页时 `rawCount` 是本页消费的原始数量，不是过滤后的歌曲数。既没有可靠 `more` 也没有可靠 `total` 时返回
+`incomplete: true`，本体保留已显示的内容并允许重试。此插件的 `trackPage` 不配置缓存，避免不完整
+结果阻止重试。
 
 ## 7. 播放与音质
 
@@ -248,14 +255,14 @@ commentReplies(track, id, parentCommentId, cursor?, limit?) -> CommentReplies
 ## 10. 构建与发布
 
 ```bash
-node scripts/bundle-plugins.cjs MusicBridge/local-plugins netease
-node scripts/check-plugin-contracts.cjs --enforce
-node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
+node scripts/build-artist-plugins.cjs
+node --test scripts/test-artist-plugins.cjs
+node ../RhineMusicPanel/scripts/check-marketplace.cjs index.json
 ```
 
 发布前确认：
 
-- `manifest.entry.sha256` / `size` 已由构建器回写。
+- `manifest.entry.sha256` / `size` 已由市场构建脚本回写，兼容基底摘要已校验。
 - `manifest.files[]` 覆盖所有运行时文件。
 - 市场 `index.json` 的 `version`、`entry`、`files` 与插件目录一致。
 - 插件目录不依赖 `node_modules`。
@@ -274,7 +281,7 @@ node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
 
 ## 12. 验收清单
 
-- [ ] 上游依赖只在插件目录，core 产物不含平台协议/资产。
+- [ ] 上游依赖只在独立插件仓库，core 产物不含平台协议/资产。
 - [ ] manifest 2.0，operations/capabilities/实现一致。
 - [ ] 搜索、详情、播放、歌词、登录、喜欢、评论逐项 smoke 通过。
 - [ ] 分页第二页、空页、`more` 终止有测试。
