@@ -1,8 +1,17 @@
 // 波点音乐 native operation 适配：把上游接口收敛成 Rhine 统一模型。
 
-import lyricsFormat from '../../lyrics-format.cjs';
+import lyricsFormat from './lyrics-format.cjs';
 import { makeError, Transport, secureUrl } from './transport.mjs';
-import { albumOf, artistOf, chartOf, commentOf, playlistOf, trackOf } from './items.mjs';
+import {
+    aiPlaylistOf,
+    albumOf,
+    artistOf,
+    chartOf,
+    commentOf,
+    guessPlaylistOf,
+    playlistOf,
+    trackOf,
+} from './items.mjs';
 
 const SEARCH_PAGE = 30;
 const LIST_PAGE = 30;
@@ -13,21 +22,105 @@ const MAX_PLAYLIST_TRACKS = 1000;
 const SONG_CACHE_LIMIT = 600;
 const LIKED_TTL_MS = 60000;
 const COLLECTION_TTL_MS = 60000;
+const GUESS_CACHE_TTL_MS = 60000;
 const QR_CONTENT_PREFIX = 'https://bodian-oia.kuwo.cn/bodian/download.html?pageName=login_pc&pt=3';
+const RECOMMEND_STARTED_AT = Date.now();
 
-const QUALITY_BITRATES = {
-    standard: ['128'],
-    high: ['20000', '320', '128'],
-    lossless: ['2000', '20000', '320', '128'],
+const GUESS_CARDS = [
+    {
+        id: 'guess-normal',
+        title: '私人推荐',
+        description: '根据你的听歌偏好持续推荐',
+        mode: 'normal',
+    },
+    {
+        id: 'guess-familiar',
+        title: '热歌熟悉',
+        description: '重温熟悉的热门旋律',
+        mode: 'familiar',
+    },
+    {
+        id: 'guess-explore',
+        title: '新鲜探索',
+        description: '发现平时较少接触的歌曲',
+        mode: 'explore',
+    },
+    {
+        id: 'guess-favorite',
+        title: '我喜欢的',
+        description: '你收藏到喜欢列表的歌曲',
+        mode: 'favorite',
+    },
+];
+
+const QUALITY_FORMATS = {
+    standard: [
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+    high: [
+        { quality: 'high', format: 'mp3', br: '320kmp3', legacyBr: '320' },
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+    lossless: [
+        { quality: 'lossless', format: 'flac', br: '2000kflac', legacyBr: '2000' },
+        { quality: 'high', format: 'mp3', br: '320kmp3', legacyBr: '320' },
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+    zhenpin: [
+        { quality: 'zhenpin', format: 'zp', br: '20000', legacyBr: '20000' },
+        { quality: 'lossless', format: 'flac', br: '2000kflac', legacyBr: '2000' },
+        { quality: 'high', format: 'mp3', br: '320kmp3', legacyBr: '320' },
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+    spatial: [
+        { quality: 'spatial', format: 'mgg', br: '22000kmgg', legacyBr: '22000' },
+        { quality: 'spatial', format: 'mflac', br: '20501kmflac', legacyBr: '20501' },
+        { quality: 'zhenpin', format: 'zp', br: '20000', legacyBr: '20000' },
+        { quality: 'lossless', format: 'flac', br: '2000kflac', legacyBr: '2000' },
+        { quality: 'high', format: 'mp3', br: '320kmp3', legacyBr: '320' },
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+    master: [
+        { quality: 'master', format: 'mflac', br: '20900kmflac', legacyBr: '20900' },
+        { quality: 'spatial', format: 'mflac', br: '20501kmflac', legacyBr: '20501' },
+        { quality: 'zhenpin', format: 'zp', br: '20000', legacyBr: '20000' },
+        { quality: 'lossless', format: 'flac', br: '2000kflac', legacyBr: '2000' },
+        { quality: 'high', format: 'mp3', br: '320kmp3', legacyBr: '320' },
+        { quality: 'standard', format: 'mp3', br: '128kmp3', legacyBr: '128' },
+    ],
+};
+
+const QUALITY_TIERS = {
+    standard: 'standard',
+    high: 'hq',
+    lossless: 'lossless',
+    zhenpin: 'hires',
+    spatial: 'hires',
+    master: 'master',
 };
 
 const TIER_RANK = {
     standard: 1,
     hq: 2,
     lossless: 3,
+    hires: 4,
+    master: 5,
+};
+
+const TIER_BY_QUALITY = {
+    master: 'master',
+    spatial: 'hires',
+    zhenpin: 'hires',
+    hires: 'hires',
+    lossless: 'lossless',
+    high: 'hq',
+    standard: 'standard',
 };
 
 const songCache = new Map();
+const guessCache = new Map();
+const guessHistory = new Map();
+const guessOffsets = new Map();
 let likedCache = { uid: '', token: '', ids: [], at: 0 };
 let likedLoading = null;
 let collectionCache = { uid: '', token: '', at: 0, mine: [], saved: [], albums: [] };
@@ -54,6 +147,49 @@ function parsePlaylistId(value) {
         throw makeError(404, '波点音乐歌单无效');
     }
     return { source: Number(match[1]), raw: match[2] };
+}
+
+function parseAiPlaylistId(value) {
+    const text = String(value || '');
+    const legacy = /^ai-(\d+)$/.exec(text);
+    if (legacy) {
+        return { moduleId: 1, index: Number(legacy[1]), passRecName: '' };
+    }
+    const match = /^ai-(\d+)-(\d+)(?:-(.+))?$/.exec(text);
+    if (!match) {
+        throw makeError(404, '波点音乐歌单无效');
+    }
+    let passRecName = '';
+    if (match[3]) {
+        try {
+            passRecName = decodeURIComponent(match[3]);
+        } catch (error) {
+            // 旧缓存里的名称可能未编码，按原值继续请求。
+            passRecName = match[3];
+        }
+    }
+    return {
+        moduleId: Number(match[1]),
+        index: Number(match[2]),
+        passRecName,
+    };
+}
+
+function guessCardOf(value) {
+    const id = String(value || '');
+    const card = GUESS_CARDS.find((item) => item.id === id);
+    if (!card) {
+        throw makeError(404, '波点音乐猜你想听入口无效');
+    }
+    return card;
+}
+
+function aiDetailQuery(parsed) {
+    const query = { index: parsed.index };
+    if (parsed.passRecName) {
+        query.passRecName = parsed.passRecName;
+    }
+    return query;
 }
 
 function emptyPage(extra = {}) {
@@ -90,7 +226,7 @@ function parseSize(text) {
 
 function tierOf(format, bitrate) {
     if (format === 'flac') {
-        return 'lossless';
+        return Number(bitrate) >= 10000 ? 'hires' : 'lossless';
     }
     if (Number(bitrate) >= 320) {
         return 'hq';
@@ -98,14 +234,46 @@ function tierOf(format, bitrate) {
     return 'standard';
 }
 
-function qualityOfTier(tier) {
-    if (tier === 'lossless') {
+function catalogOf(data) {
+    const levels = new Set(
+        (Array.isArray(data && data.audios) ? data.audios : [])
+            .map((audio) => String(audio.level || '').toLowerCase())
+            .filter(Boolean),
+    );
+    return {
+        hasLossless: levels.has('ff'),
+        hasZhenpin: levels.has('zp'),
+        hasSpatial: levels.has('mgg') || levels.has('zpga201') || levels.has('zpga501'),
+        hasMaster: levels.has('master') || levels.has('mflac') || levels.has('zply'),
+    };
+}
+
+function providerQualityOf(data, candidate, requested, catalog) {
+    const level = String((data && data.level) || '').toLowerCase();
+    if (level === 'zp') {
+        return 'zhenpin';
+    }
+    if (level === 'master' || level === 'zply') {
+        return 'master';
+    }
+    if (level === 'mgg' || level === 'zpga201' || level === 'zpga501') {
+        return 'spatial';
+    }
+    if (level === 'ff' || level === 'zpl') {
         return 'lossless';
     }
-    if (tier === 'hq') {
-        return 'high';
+
+    const format = String((data && data.format) || '').toLowerCase();
+    const bitrate = Number(data && data.bitrate) || 0;
+    if (format === 'flac') {
+        const premiumRequest = ['zhenpin', 'spatial', 'master'].includes(requested);
+        const premiumCandidate = ['zhenpin', 'spatial', 'master'].includes(candidate.quality);
+        if (catalog.hasZhenpin && premiumRequest && premiumCandidate) {
+            return 'zhenpin';
+        }
+        return 'lossless';
     }
-    return 'standard';
+    return Number(bitrate) >= 320 ? 'high' : 'standard';
 }
 
 function rememberSong(raw, track) {
@@ -120,6 +288,9 @@ function forgetLibraries() {
     likedCache = { uid: '', token: '', ids: [], at: 0 };
     likedLoading = null;
     collectionCache = { uid: '', at: 0, mine: [], saved: [], albums: [] };
+    guessCache.clear();
+    guessHistory.clear();
+    guessOffsets.clear();
 }
 
 export class BodianApi {
@@ -312,6 +483,12 @@ export class BodianApi {
         if (/^bang-\d+$/.test(String(id || ''))) {
             return this.chartDetail(parsePrefixed(id, 'bang'));
         }
+        if (String(id || '').startsWith('guess-')) {
+            return this.guessPlaylistDetail(id);
+        }
+        if (String(id || '').startsWith('ai-')) {
+            return this.aiPlaylistDetail(id);
+        }
         const parsed = parsePlaylistId(id);
         const found = await this.resolvePlaylist(parsed.raw, parsed.source);
         const playlist = this.playlistEntity(found.info, { source: found.source });
@@ -332,6 +509,43 @@ export class BodianApi {
             chart.trackCount = tracks.length;
         }
         return [chart, tracks, []];
+    }
+
+    /** AI 歌单由首页模块和位置序号定位，主题歌单还必须带 passRecName。 */
+    async aiPlaylistDetail(id) {
+        const parsed = parseAiPlaylistId(id);
+        const data = await this.transport.request('service/home/aiPlaylistDetail', {
+            query: aiDetailQuery(parsed),
+        });
+        const rows = Array.isArray(data.musicList) ? data.musicList : [];
+        const tracks = rows.map(trackOf);
+        const playlist = aiPlaylistOf(
+            {
+                title: data.title,
+                subTitle: data.subTitle,
+                bigTitle: data.bigTitle,
+                passRecName: parsed.passRecName || data.passRecName,
+                songs: rows,
+            },
+            parsed.index,
+            { moduleId: parsed.moduleId },
+        );
+        playlist.trackCount = tracks.length;
+        if (tracks.length && !playlist.cover) {
+            playlist.cover = tracks[0].cover;
+        }
+        return [playlist, tracks, []];
+    }
+
+    async guessPlaylistDetail(id) {
+        const card = guessCardOf(id);
+        const playlist = guessPlaylistOf(card);
+        const page = await this.guessTracks(card.mode, 0);
+        playlist.trackCount = page.items.length;
+        if (page.items.length && page.items[0].cover) {
+            playlist.cover = page.items[0].cover;
+        }
+        return [playlist, page.items, []];
     }
 
     /** 歌单 id 里的 source 可能过期，按自建、收藏、平台的顺序再找一次。 */
@@ -421,6 +635,20 @@ export class BodianApi {
             const rows = Array.isArray(data.musics) ? data.musics : [];
             return pageOf(rows.map(trackOf), rows.length >= LIST_PAGE, Number(data.total));
         }
+        if (String(ref.id || '').startsWith('guess-')) {
+            const card = guessCardOf(ref.id);
+            return this.guessTracks(card.mode, offset);
+        }
+        if (String(ref.id || '').startsWith('ai-')) {
+            const parsed = parseAiPlaylistId(ref.id);
+            const data = await this.transport.request('service/home/aiPlaylistDetail', {
+                query: aiDetailQuery(parsed),
+            });
+            const rows = Array.isArray(data.musicList) ? data.musicList : [];
+            const start = Math.max(0, Number(offset) || 0);
+            const items = rows.slice(start, start + LIST_PAGE).map(trackOf);
+            return pageOf(items, start + items.length < rows.length, rows.length);
+        }
         if (ref.kind === 'playlist') {
             const parsed = parsePlaylistId(ref.id);
             const found = await this.resolvePlaylist(parsed.raw, parsed.source);
@@ -444,40 +672,86 @@ export class BodianApi {
         return pageOf(rows.map(albumOf), rows.length >= LIST_PAGE, Number(data.total));
     }
 
+    async audioCatalog(raw) {
+        if (!this.transport.isSignedIn()) {
+            return catalogOf(null);
+        }
+        try {
+            const info = await this.transport.request('service/music/info', {
+                query: { musicId: raw },
+                native: true,
+            });
+            return catalogOf(info);
+        } catch (error) {
+            // 目录只用于区分官方档位文案，失败时仍按响应格式降级播放。
+            return catalogOf(null);
+        }
+    }
+
+    async requestAudio(raw, candidate) {
+        if (!this.transport.isSignedIn()) {
+            const query = {
+                devId: this.transport.devid(),
+                musicId: raw,
+                format: candidate.format,
+                br: candidate.legacyBr,
+                freeSign: '',
+            };
+            return this.transport.request('play/music/v2/audioUrl', { query });
+        }
+        try {
+            return await this.transport.request('play/music/v2/audioUrl', {
+                query: { musicId: raw, format: candidate.format, br: candidate.br },
+                kpk: true,
+            });
+        } catch (error) {
+            if (error && error.code === 401) {
+                throw error;
+            }
+            const query = {
+                devId: this.transport.devid(),
+                musicId: raw,
+                format: candidate.format,
+                br: candidate.br,
+                freeSign: '',
+            };
+            return this.transport.request('play/music/v2/audioUrl', {
+                query,
+                signed: true,
+            });
+        }
+    }
+
     async playback(track, qualityId) {
         const raw = digits(track && track.id);
-        const requested = QUALITY_BITRATES[qualityId] ? qualityId : 'high';
-        const bitrates = QUALITY_BITRATES[requested];
+        const requested = QUALITY_FORMATS[qualityId] ? qualityId : 'high';
+        const targetTier = QUALITY_TIERS[requested] || 'hq';
+        const catalog = await this.audioCatalog(raw);
         let best = null;
         let lastError = null;
-        for (const br of bitrates) {
+
+        for (const candidate of QUALITY_FORMATS[requested]) {
             let data;
             try {
-                data = await this.transport.request('play/music/v2/audioUrl', {
-                    query: {
-                        devId: this.transport.devid(),
-                        musicId: raw,
-                        br,
-                        freeSign: '',
-                    },
-                });
+                data = await this.requestAudio(raw, candidate);
             } catch (error) {
                 lastError = error;
                 continue;
             }
-            const found = this.playbackSource(data, br, requested);
-            if (!found) {
+            const source = this.playbackSource(data, candidate, requested, catalog);
+            if (!source) {
                 continue;
             }
-            if (!best || TIER_RANK[found.tier] > TIER_RANK[best.tier]) {
-                best = found;
-            } else if (TIER_RANK[found.tier] === TIER_RANK[best.tier] && found.bitrate > best.bitrate) {
-                best = found;
+            if (!best || TIER_RANK[source.tier] > TIER_RANK[best.tier]) {
+                best = source;
+            } else if (TIER_RANK[source.tier] === TIER_RANK[best.tier] && source.bitrate > best.bitrate) {
+                best = source;
             }
-            if (best.tier === 'lossless') {
+            if ((TIER_RANK[best.tier] || 0) >= (TIER_RANK[targetTier] || 0)) {
                 break;
             }
         }
+
         if (!best) {
             if (lastError && lastError.code === 401) {
                 throw lastError;
@@ -491,8 +765,8 @@ export class BodianApi {
         return best;
     }
 
-    playbackSource(data, br, requested) {
-        if (!data || !data.audioUrl) {
+    playbackSource(data, candidate, requested, catalog) {
+        if (!data || (!data.audioUrl && !data.audioHttpsUrl)) {
             return null;
         }
         const format = String(data.format || '').toLowerCase();
@@ -503,8 +777,9 @@ export class BodianApi {
         if (!url) {
             return null;
         }
-        const bitrate = Number(data.bitrate) || Number(br) || 128;
-        const tier = tierOf(format, bitrate);
+        const bitrate = Number(data.bitrate) || Number.parseInt(candidate.legacyBr, 10) || 128;
+        const providerQuality = providerQualityOf(data, candidate, requested, catalog);
+        const tier = TIER_BY_QUALITY[providerQuality] || tierOf(format, bitrate);
         const source = {
             url,
             format,
@@ -512,12 +787,13 @@ export class BodianApi {
             bitrate,
             size: parseSize(data.size),
             tier,
-            providerTier: String(br),
+            providerTier: providerQuality,
             qualityId: requested,
+            br: bitrate,
+            providerFormat: candidate.format,
         };
-        const fallback = qualityOfTier(tier);
-        if (fallback !== requested) {
-            source.qualityFallback = fallback;
+        if (providerQuality !== requested) {
+            source.qualityFallback = providerQuality;
         }
         return source;
     }
@@ -526,6 +802,7 @@ export class BodianApi {
         const raw = digits(track && track.id);
         const data = await this.transport.request('play/music/v2/checkRight', {
             query: { musicId: raw, freeSign: '' },
+            signed: true,
         });
         const audition = data.audition || null;
         const url = audition
@@ -661,7 +938,7 @@ export class BodianApi {
         }
         const mine = [];
         const saved = [];
-        const albums = [];
+        const albumMap = new Map();
         const created = await this.transport.request('service/playlist/userCreate', {
             query: { userId: key },
         });
@@ -680,7 +957,8 @@ export class BodianApi {
             const rows = Array.isArray(collected.playLists) ? collected.playLists : [];
             for (const wire of rows) {
                 if (wire.albumId) {
-                    albums.push(albumOf(wire));
+                    const album = albumOf(wire);
+                    albumMap.set(album.id, album);
                 } else {
                     saved.push(this.playlistEntity(wire, { source: wire.sourceType || 4 }));
                 }
@@ -689,6 +967,27 @@ export class BodianApi {
                 break;
             }
         }
+        for (let pn = 1; pn <= 10; pn += 1) {
+            const collected = await this.transport
+                .request('service/collect/6/list', {
+                    query: { userId: key, pn, rn: PLAYLIST_PAGE },
+                })
+                .catch(() => ({ albumList: [] }));
+            let rows = [];
+            if (Array.isArray(collected.albumList)) {
+                rows = collected.albumList;
+            } else if (Array.isArray(collected.playLists)) {
+                rows = collected.playLists;
+            }
+            for (const wire of rows) {
+                const album = albumOf({ ...wire, albumId: wire.albumId || wire.id });
+                albumMap.set(album.id, album);
+            }
+            if (rows.length < PLAYLIST_PAGE) {
+                break;
+            }
+        }
+        const albums = [...albumMap.values()];
         collectionCache = { uid: key, token: current.token, at: Date.now(), mine, saved, albums };
         return collectionCache;
     }
@@ -798,11 +1097,10 @@ export class BodianApi {
 
     async discover(tab, offset = 0, category) {
         if (tab === 'daily') {
-            const data = await this.transport.request('service/home/module', {
-                query: { moduleId: 3 },
-            });
-            const rows = Array.isArray(data.musicList) ? data.musicList : [];
-            return pageOf(rows.map(trackOf), false, rows.length);
+            return this.dailySongs();
+        }
+        if (tab === 'playlists') {
+            return this.recommendedPlaylists();
         }
         if (tab === 'charts') {
             const groups = await this.transport.request('service/home/bangNew');
@@ -818,16 +1116,192 @@ export class BodianApi {
             return pageOf(charts, false, charts.length);
         }
         if (tab === 'guess') {
-            const data = await this.transport.request('service/music/recommendList', {
-                query: { pn: pageNumber(offset, SEARCH_PAGE), rn: SEARCH_PAGE, select_card: 1 },
-            });
-            const rows = Array.isArray(data.musicList) ? data.musicList : [];
-            return pageOf(rows.map(trackOf), rows.length >= SEARCH_PAGE);
+            return this.guessCards();
         }
         if (tab === 'categories') {
             return this.categoryPage(offset, category);
         }
         return this.squarePage(offset);
+    }
+
+    /**
+     * 每日推荐优先用首页的 AI 歌单「潮趣日推」；
+     * 空结果再退回账号相似推荐与偶遇单曲。
+     * AI 歌单是首页布局的一部分，序号与首页模块 1 的分组一致。
+     */
+    async dailySongs() {
+        const data = await this.transport
+            .request('service/home/aiPlaylistDetail', { query: { index: 0 } })
+            .catch(() => null);
+        const aiRows = data && Array.isArray(data.musicList) ? data.musicList : [];
+        if (aiRows.length) {
+            return pageOf(aiRows.map(trackOf), false, aiRows.length);
+        }
+        for (const moduleId of [10, 3]) {
+            const fallback = await this.transport
+                .request('service/home/module', { query: { moduleId } })
+                .catch(() => null);
+            const rows = fallback && Array.isArray(fallback.musicList) ? fallback.musicList : [];
+            if (rows.length) {
+                return pageOf(rows.map(trackOf), false, rows.length);
+            }
+        }
+        return emptyPage();
+    }
+
+    /** 猜你想听固定显示四个官方入口，详情页再加载各自的歌曲流。 */
+    guessCards() {
+        const items = GUESS_CARDS.map((card) => guessPlaylistOf(card));
+        return pageOf(items, false, items.length);
+    }
+
+    /** 推荐歌曲流支持私人、熟悉与探索三种模式，“我喜欢的”复用收藏列表。 */
+    async guessTracks(mode, offset = 0) {
+        if (mode === 'favorite') {
+            const current = this.transport.session();
+            if (!current.uid || !current.token) {
+                throw makeError(401, '登录波点音乐后才能读取我喜欢的歌曲');
+            }
+            return this.likedSongs(offset);
+        }
+        if (!['normal', 'familiar', 'explore'].includes(mode)) {
+            return emptyPage();
+        }
+        const safeOffset = Math.max(0, Number(offset) || 0);
+        const pn = guessOffsets.get(mode + ':' + safeOffset) || pageNumber(safeOffset, LIST_PAGE);
+        const cacheKey = mode + '-' + pn;
+        const cached = guessCache.get(cacheKey);
+        if (cached && Date.now() - cached.at < GUESS_CACHE_TTL_MS) {
+            return cached.page;
+        }
+        const history = guessHistory.get(mode) || [];
+        const query = {
+            fg: 1,
+            lock: 0,
+            lastColdStartTime: RECOMMEND_STARTED_AT,
+            scrollNum: pn,
+            resourceId: 0,
+            recoMode: mode,
+            source: 0,
+            sourceId: 0,
+            mvFirstPlay: 0,
+            totalNum: LIST_PAGE,
+            select_card: 1,
+        };
+        if (history.length) {
+            query.repeat_cut = 1;
+            query.repeat_cut_ids = history.slice(-LIST_PAGE * 3).join(',');
+        }
+        const data = await this.transport
+            .request('service/music/recommendList', { query })
+            .catch(() => ({ musicList: [] }));
+        let page = this.trackPageFromMusicList(data.musicList);
+        if (!page.items.length) {
+            page = await this.genericGuessTracks(pn);
+        }
+        if (!page.items.length) {
+            page = await this.fallbackGuessTracks(mode, safeOffset, pn);
+        }
+        const tracks = page.items;
+        const seen = new Set(history);
+        for (const track of tracks) {
+            seen.add(track.id);
+        }
+        guessHistory.set(mode, [...seen].slice(-LIST_PAGE * 3));
+        guessOffsets.set(mode + ':' + (safeOffset + tracks.length), pn + 1);
+        if (tracks.length) {
+            guessCache.set(cacheKey, { page, at: Date.now() });
+        }
+        return page;
+    }
+
+    trackPageFromMusicList(value, total) {
+        const rows = Array.isArray(value) ? value : [];
+        const tracks = rows.map(trackOf).filter((track) => track.id);
+        return pageOf(tracks, tracks.length > 0, Number(total));
+    }
+
+    /** 旧通用推荐流没有模式参数，作为新版模式接口不可用时的主回退。 */
+    async genericGuessTracks(pn = 1) {
+        const data = await this.transport
+            .request('service/music/recommendList', {
+                query: {
+                    pn,
+                    rn: LIST_PAGE,
+                    select_card: 1,
+                },
+            })
+            .catch(() => ({ musicList: [] }));
+        return this.trackPageFromMusicList(data.musicList, data.total);
+    }
+
+    /** 推荐流仍为空时按入口选择首页公开内容，避免卡片落入不可读状态。 */
+    async fallbackGuessTracks(mode, offset = 0, pn = 1) {
+        if (mode === 'familiar') {
+            const data = await this.transport
+                .request('service/bang/16/musics', {
+                    query: { pn, rn: LIST_PAGE },
+                })
+                .catch(() => ({ musics: [] }));
+            return this.trackPageFromMusicList(data.musics, data.total);
+        }
+        if (mode === 'explore') {
+            const data = await this.transport
+                .request('service/home/aiPlaylistDetail', { query: { index: 1 } })
+                .catch(() => ({ musicList: [] }));
+            const rows = Array.isArray(data.musicList) ? data.musicList : [];
+            const start = Math.max(0, Number(offset) || 0);
+            const items = rows.slice(start, start + LIST_PAGE).map(trackOf);
+            return pageOf(items, start + items.length < rows.length, rows.length);
+        }
+        for (const moduleId of [10, 3]) {
+            const data = await this.transport
+                .request('service/home/module', { query: { moduleId } })
+                .catch(() => ({ musicList: [] }));
+            const page = this.trackPageFromMusicList(data.musicList);
+            if (page.items.length) {
+                page.more = false;
+                return page;
+            }
+        }
+        return emptyPage();
+    }
+
+    /** 推荐歌单复刻首页：个性化歌单、主题歌单，再补宝藏歌单库。 */
+    async recommendedPlaylists() {
+        const [personal, themes, collected] = await Promise.all([
+            this.transport
+                .request('service/home/module', { query: { moduleId: 1 } })
+                .catch(() => ({})),
+            this.transport
+                .request('service/home/module', { query: { moduleId: 12 } })
+                .catch(() => ({})),
+            this.transport
+                .request('service/home/module', { query: { moduleId: 2 } })
+                .catch(() => ({})),
+        ]);
+        const ai = (Array.isArray(personal.songList) ? personal.songList : []).map(
+            (group, index) =>
+                aiPlaylistOf(group, index, {
+                    moduleId: 1,
+                    section: personal.moduleName || '个性化歌单',
+                }),
+        );
+        const themed = (Array.isArray(themes.songList) ? themes.songList : []).map(
+            (group, index) =>
+                aiPlaylistOf(group, index, {
+                    moduleId: 12,
+                    section: themes.moduleName || '你的主题歌单',
+                }),
+        );
+        const curated = (Array.isArray(collected.songList) ? collected.songList : []).map(
+            (wire) => this.playlistEntity(wire),
+        );
+        const items = [...ai, ...themed, ...curated];
+        if (!items.length) {
+            return this.squarePage(0);
+        }
+        return pageOf(items, false, items.length);
     }
 
     async squarePage(offset) {

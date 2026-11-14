@@ -2,14 +2,14 @@
     "schemaVersion": 2,
     "apiVersion": "2.0",
     "id": "bodian",
-    "version": "0.1.0",
+    "version": "0.1.7",
     "kind": "community",
     "publisher": "local",
     "requiresHost": ">=2.0 <3.0",
     "entry": {
         "file": "plugin.cjs",
-        "sha256": "cf6f12cf3314fc4b820189f1dc4aaabc30a4e117780240614fdce12b16af26dc",
-        "size": 55769
+        "sha256": "d8d39539e97c5fef7cc4afe32638c379d1394101cf727cca0de058517c04b2a9",
+        "size": 75296
     },
     "files": [],
     "license": "MIT",
@@ -96,28 +96,95 @@
         "dirIdRange": null
     },
     "quality": {
-        "default": "high",
+        "default": "standard",
         "options": [
             {
-                "id": "standard",
-                "label": "标准",
-                "tier": "standard"
+                "id": "master",
+                "label": "臻品母带",
+                "tier": "master",
+                "providerTier": "6"
             },
             {
-                "id": "high",
-                "label": "高品质",
-                "tier": "hq"
+                "id": "spatial",
+                "label": "臻品全景声",
+                "tier": "hires",
+                "providerTier": "5"
+            },
+            {
+                "id": "zhenpin",
+                "label": "臻品音质2.0",
+                "tier": "hires",
+                "providerTier": "4"
             },
             {
                 "id": "lossless",
-                "label": "无损",
-                "tier": "lossless"
+                "label": "SQ无损品质",
+                "tier": "lossless",
+                "providerTier": "3"
+            },
+            {
+                "id": "high",
+                "label": "HQ高品质",
+                "tier": "hq",
+                "providerTier": "2"
+            },
+            {
+                "id": "standard",
+                "label": "标准品质",
+                "tier": "standard",
+                "providerTier": "1"
             }
         ],
+        "descriptions": {
+            "master": {
+                "title": "臻品母带",
+                "caption": "MASTER",
+                "detail": "还原原声细节",
+                "badge": "master"
+            },
+            "spatial": {
+                "title": "臻品全景声",
+                "caption": "360 AUDIO",
+                "detail": "自研空间音频",
+                "badge": "hires"
+            },
+            "zhenpin": {
+                "title": "臻品音质2.0",
+                "caption": "HIGH-RES",
+                "detail": "音乐品质增强",
+                "badge": "hires"
+            },
+            "lossless": {
+                "title": "SQ无损品质",
+                "caption": "LOSSLESS / SQ",
+                "detail": "无损编码，保留更完整的录音细节",
+                "badge": "sq"
+            },
+            "high": {
+                "title": "HQ高品质",
+                "caption": "HIGH QUALITY",
+                "detail": "更充分保留有损编码中的声音细节",
+                "badge": "hq"
+            },
+            "standard": {
+                "title": "标准品质",
+                "caption": "STANDARD",
+                "detail": "日常聆听，兼顾音质与数据流量",
+                "badge": ""
+            }
+        },
+        "featured": [
+            "zhenpin",
+            "spatial"
+        ],
         "labels": {
-            "standard": "标准",
-            "hq": "高品质 / HQ",
-            "lossless": "无损 / SQ"
+            "standard": "标准品质",
+            "hq": "HQ高品质",
+            "sq": "SQ无损品质",
+            "hires": "高解析音质",
+            "master": "臻品母带",
+            "spatial": "臻品全景声",
+            "zhenpin": "臻品音质2.0"
         }
     },
     "login": {
@@ -180,6 +247,8 @@
             "*.kuwo.cn",
             "kwcdn.kuwo.cn",
             "*.kwcdn.kuwo.cn",
+            "qpic.cn",
+            "*.qpic.cn",
             "qpic.y.qq.com",
             "*.y.qq.com"
         ],
@@ -223,7 +292,7 @@
         "comments": true
     },
     "cache": {
-        "version": "0.1.0-1",
+        "version": "0.1.7-1",
         "ttlByOperation": {
             "songs": 86400,
             "detail": 21600,

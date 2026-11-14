@@ -1,10 +1,13 @@
 // 波点音乐上游传输层：请求头、设备标识、会话与接口信封处理。
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 const API_ORIGIN = 'https://bd-api.kuwo.cn/api/';
 const LYRIC_ORIGIN = 'https://mlyric.kuwo.cn/mobi.s';
 const USER_AGENT = 'Dart/3.3 (dart:io)';
+const NATIVE_USER_AGENT = 'BoDianMusic/5.9.1 (Android; cn.wenyu.bodian)';
+const NATIVE_CLIENT_VERSION = '5.9.1';
+const NATIVE_PAYLOAD_KEY = Buffer.from('bd2025@');
 const REQUEST_TIMEOUT_MS = 10000;
 const LYRIC_TIMEOUT_MS = 12000;
 const SIGNED_OUT_CODES = new Set([-101, 11012]);
@@ -25,6 +28,40 @@ function randomHex(bytes) {
     return randomBytes(bytes).toString('hex');
 }
 
+function md5(value) {
+    return createHash('md5').update(String(value)).digest('hex');
+}
+
+function xorBase64(value) {
+    const input = Buffer.from(value, 'utf8');
+    const output = Buffer.alloc(input.length);
+    for (let index = 0; index < input.length; index += 1) {
+        output[index] = input[index] ^ NATIVE_PAYLOAD_KEY[index % NATIVE_PAYLOAD_KEY.length];
+    }
+    return output.toString('base64');
+}
+
+/** 原生播放接口按排序后的查询字符生成 KPK 签名。 */
+export function signKpk(path, params) {
+    const query = params instanceof URLSearchParams
+        ? params.toString()
+        : new URLSearchParams(params).toString();
+    const normalized = Array.from(query).filter((char) => /[a-z0-9]/i.test(char)).sort().join('');
+    return md5('kuwotest' + normalized + path);
+}
+
+/** 官方音源接口要求按路径、查询参数和请求体生成签名。 */
+export function signQuery(path, params, bodyText = '') {
+    const query = params instanceof URLSearchParams
+        ? params.toString()
+        : new URLSearchParams(params).toString();
+    let seed = 'kuwotest' + Array.from(query).filter((char) => /[a-z0-9]/i.test(char)).sort().join('');
+    if (bodyText) {
+        seed += md5(bodyText + 'kuwotest');
+    }
+    return md5(seed + path);
+}
+
 /** 上游地址只接受 http(s)，避免把非网页协议交给播放器或封面加载器。 */
 export function safeUrl(value) {
     const url = String(value || '');
@@ -34,6 +71,11 @@ export function safeUrl(value) {
 /** 封面统一升级到 https；上游多数图片同时支持两种协议。 */
 export function secureUrl(value) {
     return safeUrl(value).replace(/^http:\/\//i, 'https://');
+}
+
+/** Qt 的封面解码链路对 WebP 支持不稳定；波点同一路径可直接取 JPEG。 */
+export function coverUrl(value) {
+    return secureUrl(value).replace(/\.webp(?=$|[?#])/i, '.jpg');
 }
 
 export class Transport {
@@ -81,9 +123,34 @@ export class Transport {
         );
     }
 
-    headers(extra) {
+    headers(extra, native = false) {
         const current = this.session();
         const device = this.devid();
+        if (native) {
+            return {
+                Accept: 'application/json',
+                client: 'android',
+                'X-Requested-With': 'cn.wenyu.bodian',
+                'api-ver': '2',
+                payload: xorBase64(JSON.stringify({
+                    devId: device,
+                    ver: NATIVE_CLIENT_VERSION,
+                    plat: 'ar',
+                    net: 'wifi',
+                    channel: 'wenyu',
+                    qimei36: '',
+                    ultraHD: 0,
+                    h265supported: 0,
+                    svrVer: 50,
+                    currentOsVersion: 35,
+                    uid: current.uid,
+                    token: current.token,
+                })),
+                'User-Agent': NATIVE_USER_AGENT,
+                'Content-Type': 'application/json',
+                ...extra,
+            };
+        }
         const values = {
             'User-Agent': USER_AGENT,
             plat: 'win',
@@ -123,15 +190,29 @@ export class Transport {
             params.set('uid', current.uid && current.token ? current.uid : '-1');
             params.set('token', current.uid && current.token ? current.token : '');
         }
+        let bodyText = '';
+        if (options.body !== undefined) {
+            bodyText = JSON.stringify(options.body);
+        }
+        if (options.signed || options.native || options.kpk) {
+            params.set('timestamp', String(options.native ? Math.floor(Date.now() / 1000) : Date.now()));
+            const signedPath = '/api/' + String(path || '').replace(/^\/+/, '');
+            const sign = options.kpk
+                ? signKpk(signedPath, params)
+                : signQuery(signedPath, params, bodyText);
+            params.set('sign', sign);
+        }
         const suffix = params.toString();
         const url = API_ORIGIN + path + (suffix ? '?' + suffix : '');
         const init = {
             method: options.method || 'GET',
-            headers: this.headers(options.headers),
+            headers: this.headers(options.headers, options.native === true || options.kpk === true),
         };
         if (options.body !== undefined) {
-            init.method = init.method === 'GET' ? 'POST' : init.method;
-            init.body = JSON.stringify(options.body);
+            if (options.method === undefined && init.method === 'GET') {
+                init.method = 'POST';
+            }
+            init.body = bodyText;
             init.headers['Content-Type'] = 'application/json';
         }
         const controller = new AbortController();

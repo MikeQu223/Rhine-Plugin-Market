@@ -1,6 +1,6 @@
 // 波点响应到 Rhine 统一模型的纯映射；不在这里发请求或写凭据。
 
-import { secureUrl } from './transport.mjs';
+import { coverUrl } from './transport.mjs';
 
 const PROVIDER = 'bodian';
 
@@ -67,7 +67,7 @@ export function trackOf(wire) {
         artists,
         extensions: {},
     };
-    const albumID = firstText(wire.albumId);
+    const albumID = firstText(wire.albumId, wire.albumID, wire.albumid, wire.album_id);
     if (albumID) {
         track.albumID = albumID;
     }
@@ -75,7 +75,7 @@ export function trackOf(wire) {
     if (album) {
         track.album = album;
     }
-    const cover = secureUrl(wire.albumPic || wire.albumPic120 || wire.pic || wire.cover);
+    const cover = coverUrl(wire.albumPic || wire.albumPic120 || wire.pic || wire.cover);
     if (cover) {
         track.cover = cover;
     }
@@ -91,19 +91,19 @@ export function trackOf(wire) {
 }
 
 export function albumOf(wire) {
-    const id = firstText(wire.albumId, wire.id);
+    const id = firstText(wire.albumId, wire.albumID, wire.albumid, wire.album_id, wire.id);
     const artists = artistRefs(wire);
     const album = {
         provider: PROVIDER,
         kind: 'album',
         id,
         key: PROVIDER + ':album:' + id,
-        title: firstText(wire.name, wire.album) || '未知专辑',
+        title: firstText(wire.name, wire.album, wire.albumName) || '未知专辑',
         artist: artistText(artists),
         artists,
         extensions: {},
     };
-    const cover = secureUrl(wire.pic || wire.albumPic || wire.cover);
+    const cover = coverUrl(wire.pic || wire.albumPic || wire.albumPic120 || wire.cover);
     if (cover) {
         album.cover = cover;
     }
@@ -139,7 +139,7 @@ export function artistOf(wire) {
         artists: [{ id, name }],
         extensions: {},
     };
-    const cover = secureUrl(wire.pic || wire.artistPic);
+    const cover = coverUrl(wire.pic || wire.artistPic);
     if (cover) {
         artist.cover = cover;
     }
@@ -172,7 +172,7 @@ export function playlistOf(wire, options = {}) {
         artists: [],
         extensions: { source },
     };
-    const cover = secureUrl(wire.pic || wire.cover);
+    const cover = coverUrl(wire.pic || wire.cover);
     if (cover) {
         playlist.cover = cover;
     }
@@ -199,6 +199,60 @@ export function playlistOf(wire, options = {}) {
     return playlist;
 }
 
+/** AI 歌单没有平台歌单 id，用模块和位置序号组成稳定标识。 */
+export function aiPlaylistOf(wire, index, options = {}) {
+    const moduleId = positiveNumber(options.moduleId) || 1;
+    const passRecName = firstText(wire.passRecName);
+    let id = 'ai-' + moduleId + '-' + index;
+    if (passRecName) {
+        id += '-' + encodeURIComponent(passRecName);
+    }
+    const previews = Array.isArray(wire.songs) ? wire.songs : [];
+    const first = previews.length ? previews[0] : {};
+    const playlist = {
+        provider: PROVIDER,
+        kind: 'playlist',
+        id,
+        key: PROVIDER + ':playlist:' + id,
+        title: firstText(wire.title, wire.name) || '个性化歌单',
+        artist: '',
+        artists: [],
+        description: firstText(wire.subTitle, wire.bigTitle, options.section),
+        trackCount: previews.length,
+        extensions: { ai: true, index, moduleId },
+    };
+    if (passRecName) {
+        playlist.extensions.passRecName = passRecName;
+    }
+    if (options.section) {
+        playlist.extensions.section = String(options.section);
+    }
+    const cover = coverUrl(first.albumPic || first.pic);
+    if (cover) {
+        playlist.cover = cover;
+    }
+    return playlist;
+}
+
+/** 猜你想听的四张卡片由客户端固定呈现，详情再按模式加载歌曲。 */
+export function guessPlaylistOf(card) {
+    return {
+        provider: PROVIDER,
+        kind: 'playlist',
+        id: card.id,
+        key: PROVIDER + ':playlist:' + card.id,
+        title: card.title,
+        artist: '',
+        artists: [],
+        description: card.description,
+        trackCount: 0,
+        extensions: {
+            guess: true,
+            mode: card.mode,
+        },
+    };
+}
+
 export function chartOf(wire) {
     const raw = firstText(wire.id);
     const id = 'bang-' + raw;
@@ -213,7 +267,7 @@ export function chartOf(wire) {
         chart: true,
         extensions: {},
     };
-    const cover = secureUrl(wire.pic);
+    const cover = coverUrl(wire.pic);
     if (cover) {
         chart.cover = cover;
     }
@@ -267,7 +321,7 @@ export function commentOf(wire) {
     if (userId) {
         comment.userId = userId;
     }
-    const avatar = secureUrl(user.headImg || wire.headImg);
+    const avatar = coverUrl(user.headImg || wire.headImg);
     if (avatar) {
         comment.avatarUrl = avatar;
     }

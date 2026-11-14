@@ -80,6 +80,23 @@
                 "assets/quality/hq.png",
                 "assets/quality/hires.png"
             ]
+        },
+        {
+            "id": "bodian",
+            "name": "波点音乐",
+            "description": "搜索 · 播放 · 歌词 · 歌单",
+            "version": "0.1.7",
+            "publisher": "local",
+            "license": "MIT",
+            "path": "plugins/bodian",
+            "entry": {
+                "file": "plugin.cjs"
+            },
+            "files": [
+                "plugin.cjs",
+                "LICENSE",
+                "THIRD-PARTY-NOTICES.md"
+            ]
         }
     ]
 }
