@@ -286,24 +286,24 @@ async comments(track, id, sort = 'hot', page = 0, cursor = '') {
 ## 10. 打包与发布
 
 1. 构建 `plugin.cjs`，确认 `manifest.entry.sha256` / `size` 已更新。
-2. 检查 `manifest.files[]` 覆盖所有运行时文件。
+2. 检查 `manifest.files[]` 覆盖运行时文件，填写摘要、大小和经过验证的 `requiresClient`。
 3. 把插件目录放进市场 `plugins/<id>/`。
 4. 在 `index.json` 添加条目，`version`、`entry`、`files` 与插件目录一致。
-5. 运行市场检查。
+5. 在市场仓运行打包，检查生成的 `.rhineplugin`。
 
 ```bash
-node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
+node scripts/release-plugins.cjs build
 ```
 
-市场安装不验签、不校验哈希、不做版本信任链；只校验 manifest 结构、id、相对路径和入口存在性。
-`files[]` 漏文件会导致安装后运行失败。
+市场和文件导入共用此包，发布及索引更新方式见[市场发布流程](MARKETPLACE.md#6-打包与发布)。
+`files[]` 必须包含动态引用的资源和运行文件。打包检查会验证声明、文件摘要和可解析的依赖。
 
 ## 11. 测试
 
 最小验证：
 
 ```bash
-node scripts/check-plugin-contracts.cjs --enforce
+node --test scripts/test-plugin-registry.cjs scripts/test-plugin-package.cjs
 node scripts/check-contract-freeze.cjs
 node scripts/check-packaged-bridge.cjs output/resources/MusicBridge
 node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
@@ -342,7 +342,7 @@ printf '%s\n' '{"id":"1","route":"/native/<id>/search","params":{"args":["hello"
 11. 依赖 `host.authenticated()` 做安全判断。
 12. 依赖 core 调用 `dispose()` 做每请求清理。
 13. 在插件里读取其他 provider 的 cookie，或把 token 写进错误消息。
-14. 把平台名称/文案/资产放进主仓库；应放在插件目录或本地 `docs/PLUGIN/`。
+14. 把平台名称/文案/资产放进主仓库；应放在插件目录或本地 独立插件仓库。
 15. 在插件里使用 `\p{...}` 正则；移动端 libnode 没有完整 ICU，插件加载阶段就会失败。
 
 ## 13. 验收清单

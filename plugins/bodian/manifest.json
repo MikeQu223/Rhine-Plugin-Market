@@ -3,15 +3,27 @@
     "apiVersion": "2.0",
     "id": "bodian",
     "version": "0.1.7",
-    "kind": "community",
+    "kind": "third-party",
     "publisher": "local",
     "requiresHost": ">=2.0 <3.0",
+    "requiresClient": ">=1.3.25",
     "entry": {
         "file": "plugin.cjs",
         "sha256": "d8d39539e97c5fef7cc4afe32638c379d1394101cf727cca0de058517c04b2a9",
         "size": 75296
     },
-    "files": [],
+    "files": [
+        {
+            "path": "LICENSE",
+            "sha256": "72552cc3d59ad4f9b4d8f71f7ba3d53dd468c8afa79addb30e2a2950dd88a997",
+            "size": 1138
+        },
+        {
+            "path": "THIRD-PARTY-NOTICES.md",
+            "sha256": "433548244a73edf82156ddb39c6e6e85170a9bc2a3f2823efc15d831cd671e1e",
+            "size": 890
+        }
+    ],
     "license": "MIT",
     "attribution": "THIRD-PARTY-NOTICES.md",
     "runtime": {

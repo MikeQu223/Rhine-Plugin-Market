@@ -1,0 +1,112 @@
+name: Rhine plugin packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_commit:
+        description: Full Rhine-Music-Database SDK commit SHA
+        required: true
+        type: string
+      release_tag:
+        description: Market release tag (market-vMAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      client_version:
+        description: SemVer client version for package compatibility checks
+        required: true
+        default: '1.3.25'
+        type: string
+      publish:
+        description: Publish the validated packages to GitHub Releases
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate release inputs
+        env:
+          SDK_COMMIT: ${{ inputs.sdk_commit }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          [[ "$SDK_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_TAG" =~ ^market-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: market
+      - uses: actions/checkout@v4
+        with:
+          repository: MikeQu223/Rhine-Music-Database
+          ref: ${{ inputs.sdk_commit }}
+          persist-credentials: false
+          path: panel
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - name: Install locked SDK build tools
+        working-directory: panel
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test, package and verify
+        working-directory: market
+        env:
+          RHINE_PANEL_ROOT: ${{ github.workspace }}/panel
+          RHINE_RELEASE_CLIENT_VERSION: ${{ inputs.client_version }}
+        run: |
+          node --test scripts/test-artist-plugins.cjs sources/bodian/test.mjs
+          node scripts/release-plugins.cjs build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rhineplugin-packages
+          path: market/plugins/*.rhineplugin
+          compression-level: 0
+          if-no-files-found: error
+
+  publish:
+    if: ${{ inputs.publish && github.ref == 'refs/heads/main' }}
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: market-release-${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - uses: actions/download-artifact@v4
+        with:
+          name: rhineplugin-packages
+          path: ${{ runner.temp }}/rhineplugin
+      - name: Publish and prepare the index update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          MARKET_COMMIT: ${{ github.sha }}
+          SDK_COMMIT: ${{ inputs.sdk_commit }}
+        run: |
+          packages="$RUNNER_TEMP/rhineplugin"
+          release="$RUNNER_TEMP/rhine-release.json"
+          existing_tag="$(git ls-remote --refs origin "refs/tags/$RELEASE_TAG")"
+          if [[ -n "$existing_tag" ]]; then
+            echo "Release tag already exists: $RELEASE_TAG"
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" "$packages"/*.rhineplugin --repo "$GITHUB_REPOSITORY" \
+            --draft --target "$MARKET_COMMIT" --title "$RELEASE_TAG" --notes "SDK commit: $SDK_COMMIT"
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          gh api --header 'X-GitHub-Api-Version: 2026-03-10' \
+            "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$release"
+          node scripts/release-plugins.cjs index "$release" "$packages" "$GITHUB_REPOSITORY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reviewed-market-index-candidate
+          path: ${{ runner.temp }}/rhineplugin/index.json
+          if-no-files-found: error

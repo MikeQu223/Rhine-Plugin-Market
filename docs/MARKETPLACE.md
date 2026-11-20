@@ -1,7 +1,6 @@
 # 插件市场约定
 
-- 目标：开发者按目录规范提交插件，客户端直接下载安装。
-- 当前策略：不签名、不做信任链、不做哈希/版本校验；只校验 manifest 结构、id、相对路径和入口存在性。
+市场和本地导入共用 `.rhineplugin` 包及客户端安装检查。校验文件完整性、manifest 和版本兼容性，确认页单独提示发布者身份未验证。
 
 ## 1. 市场仓库布局
 
@@ -36,8 +35,9 @@ plugins/<id>/...
 
 - `path` 是插件目录；默认 `plugins/<id>`。
 - `entry.file` 必填；`files` 列出除 `manifest.json` 外需要下载的文件。
-- 客户端不解析 tar、不验签；按 `path + file` 从市场 raw 地址下载到插件目录。
-- `files` 必须列出所有运行时文件；`check-marketplace.cjs` 会反向遍历目录并拒绝未列出的文件。
+- 已发布的条目可加 `package`，字段为 `url`、`size` 和 `sha256`，分别记录下载地址、字节数和十六进制 SHA-256。
+- 支持安装包的客户端优先下载 `package` 附件。条目没有附件字段时才按 `path + file` 下载。保留这两项用于旧客户端和旧市场索引。
+- `files` 必须覆盖所有运行时文件，除 `manifest.json` 和已在 `entry.file` 指定的入口。`check-marketplace.cjs` 会反向遍历目录并拒绝未列出的文件。
 - `manifest.json` 至少包含 `schemaVersion`、`apiVersion`、`id`、`version`、`entry.file`、`display.name`、
   `capabilities`；完整要求见 [插件包要求](PLUGIN-REQUIREMENTS.md)。
 
@@ -60,7 +60,7 @@ plugins/<id>/...
 
 - 禁用后 Qt ProviderRegistry 与 worker Registry 都不加载该插件。
 - 启用/禁用会写入状态文件并重启音乐服务；当前正在使用的来源不能直接禁用。
-- 桌面端插件管理支持“导入文件夹”；只接受带有效 `manifest.json` 和入口文件的目录。
+- 插件管理支持本地 `.rhineplugin` 和既有目录导入入口。安装、更新、启用与加载均校验当前运行环境。
 - 插件详情支持卸载用户安装的插件；内置插件不能卸载，卸载前需切换到其他来源。
 - 插件详情面板显示版本、发布者、许可证、入口、能力数量和状态。
 
@@ -69,10 +69,18 @@ plugins/<id>/...
 - `npm run build` 默认 `--plugins=core`，干净安装不带插件。
 - 开发/完整回归使用 `npm run build -- --plugins=full` 或 `--plugins=<id,...>`。
 
-## 6. 本地打包工具（可选）
+## 6. 打包与发布
 
-`MusicBridge/plugin-package.cjs` 可用于本地生成 `.rhineplugin`（确定性 tar），但市场安装不依赖它。
-格式校验仅检查 manifest 结构，不做签名/哈希/版本校验。
+1. 使用现有构建脚本准备 `plugins/<id>/` 中的运行产物，核对文件清单、依赖、版本和摘要。网易云、QQ 音乐和波点音乐的源码构建入口位于 `scripts/`，当前酷狗音乐以仓库内审计过的运行产物为发布输入。市场安装的目录与发行包使用同一份运行产物。
+2. 使用 Node.js 26 和主仓锁定的构建依赖，在本仓执行 `node scripts/release-plugins.cjs build`。脚本检查市场清单、兼容性和可解析的运行依赖，通过同一 SDK CLI 在 `plugins/` 下生成并校验 ZIP。打包时不会安装或运行插件。直接分享此步骤生成的 `.rhineplugin` 即可供客户端离线导入。
+3. 在 Actions 手动运行 **Rhine plugin packages**，提供支持 ZIP 打包的主仓完整 commit SHA、`market-vMAJOR.MINOR.PATCH` 形式的发布 tag，以及用于兼容性检查的客户端版本。工作流默认生成下载产物。从 `main` 运行并打开发布选项时，工作流还会发布 Release 附件。本地可用 `RHINE_RELEASE_CLIENT_VERSION` 指定检查版本，默认 `1.3.25`。
+4. 工作流发布后用 GitHub 返回的附件大小和 SHA-256 核对本次生成包，输出索引候选。下载候选并核对当前 `index.json` 中的插件版本和字段，再将 `package` 信息应用到索引。若期间有新插件版本合入，先确认发布附件与当前目录匹配。
+
+需要在本地复核附件时，保存该 Release 的 API JSON，并执行以下命令。索引候选写到包目录内的 `index.json`，原市场索引由发布者按上述流程更新。
+
+```bash
+node scripts/release-plugins.cjs index /tmp/rhine-release.json plugins MikeQu223/Rhine-Plugin-Market
+```
 
 ## 7. 本地联调
 

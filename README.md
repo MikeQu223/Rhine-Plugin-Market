@@ -2,7 +2,7 @@
 
 [Rhine-Music-Database](https://github.com/MikeQu223/Rhine-Music-Database) 的插件市场仓库。
 
-客户端读取根目录 `index.json`，按 `path` 下载插件文件。
+客户端读取根目录 `index.json`。条目提供 `package` 时使用对应的 `.rhineplugin` 发布附件，旧条目仍可按文件清单安装。用户也可直接获取同一个附件，从插件管理页离线导入。
 
 ## 目录
 
@@ -45,12 +45,20 @@ plugins/<id>/...
 }
 ```
 
-`files` 必须列出除 `manifest.json` 外所有需要下载的文件。客户端不做签名或哈希校验；只校验
-manifest 结构、id、相对路径和入口存在性。发布前运行：
+`files` 必须列出运行所需的其他文件。新版 manifest 同时声明客户端版本范围，并记录入口及其他文件的大小和 SHA-256。文件摘要用于完整性检查，发布者身份由客户端单独显示。
+
+## 打包与发布
+
+在相邻的 Rhine Music Database 主仓库安装锁定的开发依赖，然后在本仓库执行以下命令。发布工作流使用 Node.js 26。
 
 ```bash
-node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
+node scripts/release-plugins.cjs build
 ```
+
+脚本使用主仓 SDK 检查版本、依赖和 ZIP 完整性，生成的 `.rhineplugin` 直接放在 `plugins/` 下。打包时不会安装或运行插件。`RHINE_PANEL_ROOT` 可指定主仓目录。
+GitHub Actions 中的 **Rhine plugin packages** 使用指定的主仓完整 commit SHA。
+启用发布选项后生成正式附件和市场索引候选，发布者从 Actions 下载并核对候选后更新 `index.json`。
+完整流程见[插件市场约定](docs/MARKETPLACE.md#6-打包与发布)。
 
 ## 本地测试
 

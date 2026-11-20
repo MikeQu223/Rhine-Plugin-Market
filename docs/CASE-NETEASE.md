@@ -64,8 +64,8 @@ plugins/netease/              # 市场运行时文件
   sbom.cdx.json
 ```
 
-`manifest.files[]` 必须列出以上所有运行时文件。市场安装按 `files[]` 逐文件下载；漏掉 `upstream/*`、
-`xhr-sync-worker.js`、`data/*` 或 `assets/*` 会让插件安装后运行失败。
+`manifest.files[]` 必须列出以上所有运行时文件。ZIP 打包和既有市场目录安装都依赖完整的文件清单。
+`upstream/*`、`xhr-sync-worker.js`、`data/*` 和 `assets/*` 必须完整交付。
 
 ## 4. manifest 2.0 关键片段
 
@@ -76,6 +76,7 @@ plugins/netease/              # 市场运行时文件
     "id": "netease",
     "version": "2.1.1",
     "requiresHost": ">=2.0 <3.0",
+    "requiresClient": ">=1.3.25",
     "entry": { "file": "plugin.cjs" },
     "runtime": { "hosting": ["module"], "bundled": true },
     "operations": {

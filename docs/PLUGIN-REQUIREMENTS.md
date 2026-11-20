@@ -6,8 +6,9 @@
 当前契约：
 
 - `manifest.schemaVersion`：`2`
-- `manifest.apiVersion`：`2.0`
-- `requiresHost`：建议 `>=2.0 <3.0`
+- `manifest.apiVersion` 声明最低 SDK 契约，本市场现有插件使用 `2.0`。
+- `requiresHost` 声明宿主 SDK 范围，例如 `>=2.0 <3.0`。
+- `requiresClient` 声明客户端版本范围，新包必须填写，例如 `>=1.3.25`。
 - 运行时：桌面 bundled Node；移动端 libnode 18
 - 入口：CommonJS 单文件 `plugin.cjs`
 
@@ -22,6 +23,10 @@ plugins/<id>/
   sbom.cdx.json          # 建议
   ...                    # 上游运行所需的额外文件
 ```
+
+新 `.rhineplugin` 使用标准 ZIP。包根目录为 `manifest.json` 和上述运行文件，路径与插件目录一致。
+客户端无需安装任何 npm 依赖。动态引用的 worker、资源或上游模块也必须随包交付。
+账号、Cookie、访问密钥、本机配置、开发文件和临时输出应排除在包外。
 
 市场索引：
 
@@ -57,8 +62,9 @@ plugins/<id>/
 | `id` | `^[a-z0-9-]{1,40}$`，全局唯一；同时用于凭据切片、路由和缓存命名空间 |
 | `version` | 语义化版本，例如 `1.2.0` |
 | `entry.file` | 必须存在，通常是 `plugin.cjs` |
-| `entry.sha256` / `entry.size` | 构建器生成；客户端不做信任校验，仅作元数据 |
-| `files[]` | 所有运行时文件；市场下载与校验使用 |
+| `requiresClient` | 经过验证的最低客户端版本及其他兼容范围 |
+| `entry.sha256` / `entry.size` | 构建器生成，供安装时检查完整性 |
+| `files[]` | 其他运行时文件的路径、SHA-256 和字节数 |
 | `display.name` / `display.label` / `display.detail` | 客户端展示；`display.default` 只能有一个插件声明 |
 | `capabilities` | UI 功能门控；声明了就必须真的可用 |
 | `operations` | 运行时 operation 白名单；声明了就必须实现 |
@@ -71,7 +77,7 @@ plugins/<id>/
 | `cache` | TTL、磁盘缓存 operation、版本、最大条目 |
 | `routes` | 需要原始路由时的 prefix/legacy 声明 |
 
-最小示例：
+manifest 主要字段示例。正式发布前，构建工具还需填写入口与文件的真实摘要和大小。
 
 ```json
 {
@@ -81,6 +87,7 @@ plugins/<id>/
     "version": "1.0.0",
     "publisher": "Example Lab",
     "requiresHost": ">=2.0 <3.0",
+    "requiresClient": ">=1.3.25",
     "entry": { "file": "plugin.cjs" },
     "runtime": { "hosting": ["module"], "sourceEntry": "index.mjs", "bundled": true },
     "display": {
@@ -111,6 +118,8 @@ plugins/<id>/
     }
 }
 ```
+
+版本范围使用 SemVer 比较符，空格表示交集，`||` 表示并集。预发布版必须被范围显式接纳，构建元数据不影响排序。依赖新版宿主检查接口的插件需声明 SDK `2.1` 或对应的更高版本，并按主仓 SDK 声明平台、运行时及宿主能力要求。
 
 ## 3. operations
 
@@ -244,7 +253,7 @@ operation 的缓存以保证重试有效。
 - 需要跨 cookie 保存的私有状态用 manifest `credentials.responseSecrets`；需要注入的用 `credentials.inject`。
 - 媒体 URL 必须落在 manifest `media.hosts` / `alternativeHosts` 内；封面落在 `media.coverHosts`。
 - `media.allowHttp` / `schemePolicy` 必须与真实 URL 一致；移动端 ATS 会拦截 HTTP。
-- 不签名、不校验哈希、不做信任链；只校验 manifest 结构、id、相对路径和入口存在性。
+- ZIP 与文件摘要用于完整性检查，发布者身份另行展示。用户确认后才可执行插件入口。
 
 ## 7. 发布前验证
 
@@ -252,10 +261,12 @@ operation 的缓存以保证重试有效。
 
 ```bash
 node scripts/check-contract-freeze.cjs
-node scripts/check-plugin-contracts.cjs --enforce
+node --test scripts/test-plugin-registry.cjs scripts/test-plugin-package.cjs
 node scripts/check-provider-literals.cjs --enforce
 node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
 ```
+
+然后回到市场仓库，运行 `node scripts/release-plugins.cjs build`，按[市场发布流程](MARKETPLACE.md#6-打包与发布)产出附件。
 
 插件自身至少覆盖：
 
@@ -271,7 +282,7 @@ node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
 
 ## 8. 验收清单
 
-- [ ] `manifest.json` 的 `schemaVersion` 是 `2`，`apiVersion` 是 `2.0`。
+- [ ] `manifest.json` 使用支持的 schema 和 API 版本，`requiresClient` 范围与测试结果一致。
 - [ ] `id` 唯一且符合 `^[a-z0-9-]{1,40}$`。
 - [ ] `entry.file` 存在，`files[]` 覆盖所有运行时文件。
 - [ ] `manifest.operations`、`capabilities`、实际实现三者一致。
@@ -280,4 +291,4 @@ node scripts/check-marketplace.cjs /Users/mikequ/Desktop/RhineMarket/index.json
 - [ ] 分页、空页、错误、认证过期路径都有明确行为。
 - [ ] 没有把 cookie/token/原始认证记录写进日志或错误消息。
 - [ ] 市场 `index.json` 的 `version`、`entry`、`files` 与插件目录一致。
-- [ ] `check-marketplace` 通过。
+- [ ] 市场检查和标准 ZIP 打包检查通过。

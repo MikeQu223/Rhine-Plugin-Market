@@ -6,6 +6,7 @@
     "kind": "official",
     "publisher": "local-p1",
     "requiresHost": ">=2.0 <3.0",
+    "requiresClient": ">=1.3.25",
     "entry": {
         "file": "plugin.cjs",
         "sha256": "4b895f431048d838d6f5268839c57fba7886eb3de93600ed772ba579dc73b0c4",
