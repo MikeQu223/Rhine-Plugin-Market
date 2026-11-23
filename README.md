@@ -52,12 +52,11 @@ plugins/<id>/...
 在相邻的 Rhine Music Database 主仓库安装锁定的开发依赖，然后在本仓库执行以下命令。发布工作流使用 Node.js 26。
 
 ```bash
-node scripts/release-plugins.cjs build
+RHINE_RELEASE_CLIENT_VERSION=v1.3.26 node scripts/release-plugins.cjs build
 ```
 
 脚本使用主仓 SDK 检查版本、依赖和 ZIP 完整性，生成的 `.rhineplugin` 直接放在 `plugins/` 下。打包时不会安装或运行插件。`RHINE_PANEL_ROOT` 可指定主仓目录。
-GitHub Actions 中的 **Rhine plugin packages** 使用指定的主仓完整 commit SHA。
-启用发布选项后生成正式附件和市场索引候选，发布者从 Actions 下载并核对候选后更新 `index.json`。
+GitHub Actions 中的 **Rhine plugin packages** 自动检出主仓 `main` 的最新提交。手动运行只需填写 `vMAJOR.MINOR.PATCH` 格式的 `release_tag` 和 `client_version`。必须从 `main` 运行并启用发布选项，工作流才会生成正式附件和市场索引候选；其他分支勾选发布会直接失败。发布者从 Actions 下载并核对候选后更新 `index.json`。
 完整流程见[插件市场约定](docs/MARKETPLACE.md#6-打包与发布)。
 
 ## 本地测试

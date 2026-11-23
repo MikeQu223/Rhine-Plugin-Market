@@ -10,7 +10,7 @@ const marketRoot = path.resolve(__dirname, '..');
 const panelRoot = path.resolve(process.env.RHINE_PANEL_ROOT || path.join(marketRoot, '..', 'RhineMusicPanel'));
 const indexFile = path.join(marketRoot, 'index.json');
 const packageCli = path.join(panelRoot, 'scripts', 'plugin-package.cjs');
-const releaseTag = /^market-v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
+const releaseTag = /^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
 
 // 已核对这些发行产物中的可选分支。缺失时走包内回退，不进入安装包。
 const optionalPackages = {
@@ -87,7 +87,10 @@ async function buildPackages() {
     const { createHostContext, safeRelativePath } = require(
         path.join(panelRoot, 'MusicBridge/plugins/sdk/compatibility.cjs'),
     );
-    const clientVersion = process.env.RHINE_RELEASE_CLIENT_VERSION || '1.3.25';
+    const clientVersion = (process.env.RHINE_RELEASE_CLIENT_VERSION || '').replace(/^v/, '');
+    if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(clientVersion)) {
+        throw new Error('RHINE_RELEASE_CLIENT_VERSION 必须是 vMAJOR.MINOR.PATCH 或 MAJOR.MINOR.PATCH');
+    }
     const packageIndex = readJson(indexFile);
     const run = (script, ...args) => execFileSync(process.execPath, [script, ...args], { stdio: 'inherit' });
     run(path.join(panelRoot, 'scripts', 'check-marketplace.cjs'), indexFile);

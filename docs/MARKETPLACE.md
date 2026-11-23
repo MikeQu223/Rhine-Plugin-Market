@@ -72,8 +72,8 @@ plugins/<id>/...
 ## 6. 打包与发布
 
 1. 使用现有构建脚本准备 `plugins/<id>/` 中的运行产物，核对文件清单、依赖、版本和摘要。网易云、QQ 音乐和波点音乐的源码构建入口位于 `scripts/`，当前酷狗音乐以仓库内审计过的运行产物为发布输入。市场安装的目录与发行包使用同一份运行产物。
-2. 使用 Node.js 26 和主仓锁定的构建依赖，在本仓执行 `node scripts/release-plugins.cjs build`。脚本检查市场清单、兼容性和可解析的运行依赖，通过同一 SDK CLI 在 `plugins/` 下生成并校验 ZIP。打包时不会安装或运行插件。直接分享此步骤生成的 `.rhineplugin` 即可供客户端离线导入。
-3. 在 Actions 手动运行 **Rhine plugin packages**，提供支持 ZIP 打包的主仓完整 commit SHA、`market-vMAJOR.MINOR.PATCH` 形式的发布 tag，以及用于兼容性检查的客户端版本。工作流默认生成下载产物。从 `main` 运行并打开发布选项时，工作流还会发布 Release 附件。本地可用 `RHINE_RELEASE_CLIENT_VERSION` 指定检查版本，默认 `1.3.25`。
+2. 使用 Node.js 26 和主仓锁定的构建依赖，在本仓执行 `RHINE_RELEASE_CLIENT_VERSION=vMAJOR.MINOR.PATCH node scripts/release-plugins.cjs build`。版本值与不带 `v` 的 `MAJOR.MINOR.PATCH` 均可。脚本检查市场清单、兼容性和可解析的运行依赖，通过同一 SDK CLI 在 `plugins/` 下生成并校验 ZIP。打包时不会安装或运行插件。直接分享此步骤生成的 `.rhineplugin` 即可供客户端离线导入。
+3. 在 Actions 手动运行 **Rhine plugin packages**，工作流会自动检出主仓 `main` 的最新提交。只需填写 `vMAJOR.MINOR.PATCH` 格式的 `release_tag` 和 `client_version`；工作流默认生成下载产物。必须从 `main` 运行并打开发布选项，工作流才会发布 Release 附件和索引候选；其他分支勾选发布会直接失败。
 4. 工作流发布后用 GitHub 返回的附件大小和 SHA-256 核对本次生成包，输出索引候选。下载候选并核对当前 `index.json` 中的插件版本和字段，再将 `package` 信息应用到索引。若期间有新插件版本合入，先确认发布附件与当前目录匹配。
 
 需要在本地复核附件时，保存该 Release 的 API JSON，并执行以下命令。索引候选写到包目录内的 `index.json`，原市场索引由发布者按上述流程更新。
